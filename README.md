@@ -6,7 +6,7 @@ A service exposing openebs APIs.
 
 ## Use Cases
 
-### serving EBS needs
+### Serving EBS compatibility
 
 Maya server can adapt itself as an Amazon EBS server. This makes it super simple for 
 existing EBS clients to talk to Maya `acting as an EBS Server`. One can use existing
