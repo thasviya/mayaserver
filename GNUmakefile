@@ -35,7 +35,6 @@ deps:
 	@govendor sync
 
 clean:
-	rm -rf pkg
 	rm -rf bin
 	rm -rf ${GOPATH}/bin/${CTLNAME}
 
