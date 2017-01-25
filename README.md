@@ -2,8 +2,8 @@
 
 > Maya exposes its APIs here
 
-A service exposing openebs APIs, thus making openebs storage compatible with
-EBS APIs.
+A service exposing `Elastic Block Store` i.e. EBS APIs, thus making openebs 
+storage compatible with EBS APIs.
 
 ## Use Cases
 
@@ -21,5 +21,5 @@ production environments. In other words path towards devops adoption.
 
 ## Note
 
-> This is very much a work in progress. Once the code base executes few of its
-features, the WIP tag will be removed.
+> This is very much a work in progress. Once the code base executes few of the 
+mentioned features, the WIP tag will be removed.

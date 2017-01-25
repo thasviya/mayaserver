@@ -2,12 +2,12 @@
 set -e
 
 # Create a temp dir and clean it up on exit
-TEMPDIR=`mktemp -d -t maya-test.XXX`
+TEMPDIR=`mktemp -d -t mayaserver-test.XXX`
 trap "rm -rf $TEMPDIR" EXIT HUP INT QUIT TERM
 
 # Build the Maya binary for the tests
-echo "--> Building maya"
-go build -o $TEMPDIR/maya || exit 1
+echo "--> Building mayaserver"
+go build -o $TEMPDIR/mayaserver || exit 1
 
 # Run the tests
 echo "--> Running tests"

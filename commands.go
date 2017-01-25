@@ -4,14 +4,14 @@ import (
 	"os"
 
 	"github.com/mitchellh/cli"
-	"github.com/openebs/mayaserver/pkg/command"
+	"github.com/openebs/mayaserver/cmd"
 )
 
 // Commands returns the mapping of CLI commands for Maya server. The meta
 // parameter lets you set meta options for all commands.
-func Commands(metaPtr *command.Meta) map[string]cli.CommandFactory {
+func Commands(metaPtr *cmd.Meta) map[string]cli.CommandFactory {
 	if metaPtr == nil {
-		metaPtr = new(command.Meta)
+		metaPtr = new(cmd.Meta)
 	}
 
 	meta := *metaPtr
@@ -25,7 +25,7 @@ func Commands(metaPtr *command.Meta) map[string]cli.CommandFactory {
 
 	return map[string]cli.CommandFactory{
 		"up": func() (cli.Command, error) {
-			return &command.UpCommand{
+			return &cmd.UpCommand{
 				Revision:          GitCommit,
 				Version:           Version,
 				VersionPrerelease: VersionPrerelease,
@@ -47,7 +47,7 @@ func Commands(metaPtr *command.Meta) map[string]cli.CommandFactory {
 				rel = "dev"
 			}
 
-			return &command.VersionCommand{
+			return &cmd.VersionCommand{
 				Revision:          GitCommit,
 				Version:           ver,
 				VersionPrerelease: rel,
