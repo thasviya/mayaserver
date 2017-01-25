@@ -25,7 +25,7 @@ sudo apt-get install -y zip unzip curl wget
 SCRIPT
 
 $mayaserverdev = <<SCRIPT
-#!/bin/bash
+#!/bin/sh
 
 cd /opt/gopath/src/github.com/openebs/mayaserver
 
@@ -37,8 +37,7 @@ bash buildscripts/install_go.sh
 grep "cd /opt/gopath/src/github.com/openebs/mayaserver" /home/vagrant/.profile || \
   echo "cd /opt/gopath/src/github.com/openebs/mayaserver" >> /home/vagrant/.profile
 
-echo "In-order to compile mayaserver, look at various options provided in GNUmakefile"
-echo -e "\n\tTIP: Start with command:- make init"
+echo "Look into the GNUmakefile & invoke init to get started with development"
 SCRIPT
 
 required_plugins = %w(vagrant-cachier)
@@ -91,7 +90,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vbguest.auto_update = false
   
   1.upto(NODES.to_i) do |i|
-    hostname = "client-%02d" % [i]
+    hostname = "node-%02d" % [i]
     cpus = CPUS
     mem = MEM
     

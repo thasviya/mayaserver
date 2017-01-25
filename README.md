@@ -23,3 +23,17 @@ production environments. In other words path towards devops adoption.
 
 > This is very much a work in progress. Once the code base executes few of the 
 mentioned features, the WIP tag will be removed.
+
+## Development
+
+> These are some of the steps to start off with development.
+
+- git clone https://github.com/openebs/mayaserver.git
+- cd to above cloned folder i.e mayaserver
+  - vagrant up
+  - vagrant ssh
+- from within the vagrant VM run below steps:
+  - make init
+  - make
+  - make release
+  - sudo nohup mayaserver up &>mserver.log &
