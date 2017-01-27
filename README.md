@@ -46,4 +46,4 @@ mentioned features, the WIP tag will be removed.
 automatically. You don’t need to explicitly reference the credentials in your
 code at all. 
 
-- Read through (configuring credentials section)[https://github.com/aws/aws-sdk-go#configuring-credentials]
+- Read through [configuring credentials section](https://github.com/aws/aws-sdk-go#configuring-credentials)
