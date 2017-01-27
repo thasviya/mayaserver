@@ -24,7 +24,7 @@ production environments. In other words path towards devops adoption.
 > This is very much a work in progress. Once the code base executes few of the 
 mentioned features, the WIP tag will be removed.
 
-## Development
+## Development of Mayaserver
 
 > These are some of the steps to start off with development.
 
@@ -37,3 +37,13 @@ mentioned features, the WIP tag will be removed.
   - make
   - make release
   - sudo nohup mayaserver up &>mserver.log &
+
+## Setting up EBS clients
+
+### Clients that use aws-sdk-go
+
+> Once the credentials are configured, `aws-sdk-go` can find them and use them 
+automatically. You don’t need to explicitly reference the credentials in your
+code at all. 
+
+- Read through (configuring credentials section)[https://github.com/aws/aws-sdk-go#configuring-credentials]
