@@ -38,6 +38,10 @@ type MayaConfig struct {
 	// EnableDebug is used to enable debugging HTTP endpoints
 	EnableDebug bool `mapstructure:"enable_debug"`
 
+	// Mayaserver can make use of various providers e.g. Nomad,
+	// k8s etc
+	ServiceProvider string `mapstructure:"service_provider"`
+
 	// Ports is used to control the network ports we bind to.
 	Ports *Ports `mapstructure:"ports"`
 

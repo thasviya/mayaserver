@@ -79,7 +79,7 @@ func NewHTTPServer(maya *MayaServer, config *MayaConfig, logOutput io.Writer) (*
 		logger:   maya.logger,
 		addr:     ln.Addr().String(),
 	}
-	srv.registerHandlers(config.EnableDebug)
+	srv.registerHandlers(config.ServiceProvider, config.EnableDebug)
 
 	// Start the server
 	go http.Serve(ln, gziphandler.GzipHandler(mux))
@@ -112,9 +112,9 @@ func (s *HTTPServer) Shutdown() {
 }
 
 // registerHandlers is used to attach handlers to the mux
-func (s *HTTPServer) registerHandlers(enableDebug bool) {
-	//s.mux.HandleFunc("/v1/vsms", s.wrap(s.VsmsRequest))
-	//s.mux.HandleFunc("/v1/vsm/", s.wrap(s.VsmSpecificRequest))
+func (s *HTTPServer) registerHandlers(serviceProvider string, enableDebug bool) {
+
+	s.mux.HandleFunc("/latest/meta-data/", s.wrap(s.MetaSpecificRequest))
 }
 
 // HTTPCodedError is used to provide the HTTP error code
