@@ -5,6 +5,15 @@ import (
 	"strings"
 )
 
+const (
+	// OpenEBS can be used as a persistence mechanism for
+	// any type of compute instance
+	AnyInstance = "any-compute"
+
+	// TODO We shall see how to construct an Availability Zone
+	AnyZone = "any-zone"
+)
+
 func (s *HTTPServer) MetaSpecificRequest(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
 	path := strings.TrimPrefix(req.URL.Path, "/latest/meta-data")
 
@@ -13,10 +22,11 @@ func (s *HTTPServer) MetaSpecificRequest(resp http.ResponseWriter, req *http.Req
 		return nil, CodedError(405, ErrInvalidMethod)
 	}
 
+	// We do an exact suffix comparision
 	switch {
-	case strings.HasSuffix(path, "/instance-id"):
+	case strings.Compare(path, "/instance-id") == 0:
 		return s.metaInstanceID(resp, req)
-	case strings.HasSuffix(path, "/placement/availability-zone"):
+	case strings.Compare(path, "/placement/availability-zone") == 0:
 		return s.metaAvailabilityZone(resp, req)
 	default:
 		return nil, CodedError(405, ErrInvalidMethod)
@@ -31,11 +41,7 @@ func (s *HTTPServer) metaInstanceID(resp http.ResponseWriter, req *http.Request)
 		return nil, CodedError(405, ErrInvalidMethod)
 	}
 
-	// OpenEBS can be used as a persistence mechanism for
-	// any type of compute instance
-	out := "any-compute"
-
-	return out, nil
+	return AnyInstance, nil
 }
 
 func (s *HTTPServer) metaAvailabilityZone(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
@@ -44,8 +50,5 @@ func (s *HTTPServer) metaAvailabilityZone(resp http.ResponseWriter, req *http.Re
 		return nil, CodedError(405, ErrInvalidMethod)
 	}
 
-	// TODO We shall see how to construct an Availability Zone
-	out := "any-zone"
-
-	return out, nil
+	return AnyZone, nil
 }

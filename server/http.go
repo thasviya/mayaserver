@@ -114,6 +114,8 @@ func (s *HTTPServer) Shutdown() {
 // registerHandlers is used to attach handlers to the mux
 func (s *HTTPServer) registerHandlers(serviceProvider string, enableDebug bool) {
 
+	// NOTE - The curried func (due to wrap) is set as mux handler
+	// NOTE - The original handler is passed as a func to the wrap method
 	s.mux.HandleFunc("/latest/meta-data/", s.wrap(s.MetaSpecificRequest))
 }
 
