@@ -1,13 +1,11 @@
 package cmd
 
 import (
-	//"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 
-	//"github.com/hashicorp/nomad/testutil"
 	"github.com/mitchellh/cli"
 )
 
@@ -16,7 +14,7 @@ func TestCommand_Implements(t *testing.T) {
 }
 
 func TestCommand_Args(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "maya")
+	tmpDir, err := ioutil.TempDir("", "mayaserver")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

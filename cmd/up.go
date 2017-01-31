@@ -146,7 +146,7 @@ func (c *UpCommand) setupLoggers(mconfig *server.MayaConfig) (*gatedwriter.Write
 	// Check if syslog is enabled
 	var syslog io.Writer
 	if mconfig.EnableSyslog {
-		l, err := gsyslog.NewLogger(gsyslog.LOG_NOTICE, mconfig.SyslogFacility, "nomad")
+		l, err := gsyslog.NewLogger(gsyslog.LOG_NOTICE, mconfig.SyslogFacility, "mayaserver")
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf("Syslog setup failed: %v", err))
 			return nil, nil, nil
@@ -377,7 +377,7 @@ General Options :
 
   -config=<path>
     The path to either a single config file or a directory of config
-    files to use for configuring the Nomad agent. This option may be
+    files to use for configuring Maya server. This option may be
     specified multiple times. If multiple config files are used, the
     values from each will be merged together. During merging, values
     from files found later in the list are merged over values from
@@ -390,11 +390,11 @@ General Options :
     dir is also used to store the replicated log.
 
   -dc=<datacenter>
-    The name of the datacenter this Nomad agent is a member of. By
+    The name of the datacenter this server is a member of. By
     default this is set to "dc1".
 
   -log-level=<level>
-    Specify the verbosity level of Nomad's logs. Valid values include
+    Specify the verbosity level of Maya server's logs. Valid values include
     DEBUG, INFO, and WARN, in decreasing order of verbosity. The
     default is INFO.
 
@@ -404,7 +404,7 @@ General Options :
     the current hostname of the machine.
 
   -region=<region>
-    Name of the region the Nomad agent will be a member of. By default
+    Name of the region the Maya server will be a member of. By default
     this value is set to "global".
  `
 	return strings.TrimSpace(helpText)
