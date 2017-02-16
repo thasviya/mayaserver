@@ -36,14 +36,39 @@ mentioned features, the WIP tag will be removed.
   - make init
   - make
   - make release
-  - sudo nohup mayaserver up &>mserver.log &
+  - To run the mayaserver at **default bind address**:
+    - sudo nohup mayaserver up &>mserver.log &
+  - To run the mayaserver at a **particular bind address**:
+    - sudo nohup mayaserver up -bind=172.28.128.4 &>mserver.log &
 
-## Setting up EBS clients
+## Troubleshoot
 
-### Clients that use aws-sdk-go
+- Check if mayaserver is running ?
+  - Watch out for the process with 5656 as the port
+  - `5656` is the default tcp port on which mayaserver's services are exposed
 
-> Once the credentials are configured, `aws-sdk-go` can find them and use them 
-automatically. You don’t need to explicitly reference the credentials in your
-code at all. 
+```bash
+# use netstat command
+$ netstat -tnlp
 
-- Read through [configuring credentials section](https://github.com/aws/aws-sdk-go#configuring-credentials)
+(Not all processes could be identified, non-owned process info
+ will not be shown, you would have to be root to see it all.)
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -
+tcp        0      0 127.0.0.1:5656          0.0.0.0:*               LISTEN      -
+tcp6       0      0 :::22                   :::*                    LISTEN      -
+
+# sudo will display the PID details
+$ sudo netstat -tnlp
+
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      1258/sshd
+tcp        0      0 127.0.0.1:5656          0.0.0.0:*               LISTEN      3078/mayaserver 
+tcp6       0      0 :::22                   :::*                    LISTEN      1258/sshd
+
+# use curl to check the services
+curl http://$IP:5656/latest/meta-data/instance-id
+```
+
