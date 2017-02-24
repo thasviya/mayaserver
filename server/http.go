@@ -117,6 +117,7 @@ func (s *HTTPServer) registerHandlers(serviceProvider string, enableDebug bool) 
 	// NOTE - The curried func (due to wrap) is set as mux handler
 	// NOTE - The original handler is passed as a func to the wrap method
 	s.mux.HandleFunc("/latest/meta-data/", s.wrap(s.MetaSpecificRequest))
+	s.mux.HandleFunc("/latest/volume/", s.wrap(s.VolumeSpecificRequest))
 }
 
 // HTTPCodedError is used to provide the HTTP error code

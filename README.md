@@ -9,15 +9,9 @@ storage compatible with EBS APIs.
 
 ### Serving EBS compatibility
 
-Maya server can adapt itself as an Amazon EBS server. This makes it super simple
-for existing EBS clients to talk to Maya `i.e. latter acting as an EBS Server`. 
-One can use existing docker ebs volume driver or k8s ebs volume persistence 
-plugins talk to maya with zero learning curve. In other words, infrastructure 
-admins or developers need not code anything to interact with `openebs`.
-
-Among other things, this provides an ability to switch from Amazon EBS to OpenEBS 
-& vice-versa. This provides the flexibility to use above mix in dev and/or 
-production environments. In other words path towards devops adoption.
+Maya server adapts itself like an Amazon EBS server. This makes it super simple
+for operators and admins to get into the usage of OpenEBS without much of learning
+curve.
 
 ## Note
 
@@ -72,3 +66,8 @@ tcp6       0      0 :::22                   :::*                    LISTEN      
 curl http://$IP:5656/latest/meta-data/instance-id
 ```
 
+## Licensing
+
+Mayaserver is completely open source with an Apache license. Mayaserver's
+core components and designs are a derivative of other open sourced libraries 
+like Nomad and Kubernetes.
