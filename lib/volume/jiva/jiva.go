@@ -1,100 +1,160 @@
 package jiva
 
-import (
-  "github.com/openebs/mayaserver/lib/volume"
-)
+// jiva represents the implementation that aligns to volume.Volume 
+// interface. jiva volumes are disk resources provided by OpenEBS.
+//
+// NOTE:
+//    This will be the base or common struct that can be embedded by
+// various action based jiva structures.
+type jiva struct {
 
-const (
-  // A well defined namespaced name given to this plugin
-	jivaVolumePluginName = "openebs.io/jiva"
-)
-
-// jivaVolumePlugin is the concrete implementation that aligns to
-// volume.VolumePlugin, volume.DeletableVolumePlugin, ProvisionableVolumePlugin
-// interfaces. In other words this bridges jiva with mayaserver's volume plugin
-// contracts.
-type jivaVolumePlugin struct {
-	aspect volume.VolumePluginAspect
+  // Name of the jiva volume, that can be easily remembered by the 
+  // operators
+	volName string
+	
+	// Unique id of the volume, used to find the disk resource 
+	// in the provider.
+	volumeID aws.KubernetesVolumeID
+		
+	// Interface that facilitates interaction with jiva provider
+	provider jivaProvider
+	
+	// TODO
+	//    Check if this is required ?
+	// A link to its own plugin
+	plugin  *jivaVolumePlugin	
 }
 
-// Init does the generic initialization of jivaVolumePlugin. It sets the aspect 
-// of jivaVolumePlugin.
-func (plugin *jivaVolumePlugin) Init(aspect volume.VolumePluginAspect) error {
-	plugin.aspect = aspect
+// jivaDeleter represents the implementation that aligns to volume.Deleter
+// interface.
+type jivaDeleter struct {
+	*jiva
+}
+
+
+func (d *jivaDeleter) GetName() string {
+	return d.volName
+}
+
+func (d *jivaDeleter) Delete() error {
+	return d.provider.DeleteVolume(d)
+}
+
+// jivaProvisioner represents the implementation that aligns to volume.Provisioner
+// interface.
+type jivaProvisioner struct {
+	*jiva
+	
+	// volume related options tailored into volume.VolumePluginOptions type
+	options   volume.VolumePluginOptions
+	
+	// TODO
+	//    Check if this is required ?
+	namespace string
+}
+
+// jivaProvider interface sets up the blueprint for various jiva volume
+// provisioning operations namely creation, deletion, etc. 
+type jivaProvider interface {
+
+  // CreateVolume will create a jiva volume. It makes use of an instance of 
+  // volume.Provisioner interface.
+	CreateVolume(provisioner *jivaProvisioner) (volumeID volume.MayaVolumeID, volumeSizeGB int, labels map[string]string, err error)
+	
+	// DeleteVolume will delete a jiva volume. It makes use of an instance of
+	// volume.Deleter interface.
+	DeleteVolume(deleter *jivaDeleter) error
+}
+
+// JivaOrchestrator is the concrete implementation for jivaProvider interface.
+// Jiva has a dependency on an orchestrator as its volume
+// provider.
+type JivaOrchestrator struct{}
+
+// DeleteVolume will delete the jiva resource from appropriate 
+// orchestrator
+func (jOrch *JivaOrchestrator) DeleteVolume(d *jivaDeleter) error {
+	orchestrator, err := d.jiva.plugin.aspect.GetOrchProvider()
+	if err != nil {
+		return err
+	}
+
+	deleted, err := orchestrator.DeleteDisk(d.volumeID)
+	if err != nil {
+		glog.V(2).Infof("Error deleting JIVA volume %s: %v", d.volumeID, err)
+		return err
+	}
+	if deleted {
+		glog.V(2).Infof("Successfully deleted JIVA volume %s", d.volumeID)
+	} else {
+		glog.V(2).Infof("Successfully deleted JIVA volume %s (actually already deleted)", d.volumeID)
+	}
 	return nil
 }
 
-// GetPluginName returns the namespaced name of this plugin i.e. jivaVolumePlugin
-func (plugin *jivaVolumePlugin) GetPluginName() string {
-	return jivaVolumePluginName
-}
-
-// TODO
-//  Check the naming. Is this some type vs. name ?
-// GetVolumeName returns the name of the volume specified in the spec.
-func (plugin *jivaVolumePlugin) GetVolumeName(spec *volume.Spec) (string, error) {
-	volumeSource, _, err := getVolumeSource(spec)
+// CreateVolume creates a JIVA volume.
+// Returns: volumeID, volumeSizeGB, labels, error
+func (jOrch *JivaOrchestrator) CreateVolume(c *jivaProvisioner) (volume.MayaVolumeID, int, map[string]string, error) {
+	orchestrator, err := c.awsElasticBlockStore.plugin.host.GetOrchProvider()
 	if err != nil {
-		return "", err
+		return "", 0, nil, err
 	}
 
-	return volumeSource.VolumeID, nil
-}
+	// AWS volumes don't have Name field, store the name in Name tag
+	var tags map[string]string
+	if c.options.Tags == nil {
+		tags = make(map[string]string)
+	} else {
+		tags = *c.options.Tags
+	}
+	tags["Name"] = volume.GenerateVolumeName(c.options.ClusterName, c.options.PVName, 255) // AWS tags can have 255 characters
 
-// CanSupport checks whether the supplied spec belongs to here i.e. jiva volume 
-// plugin
-func (plugin *jivaVolumePlugin) CanSupport(spec *volume.Spec) bool {
-	return spec.Volume != nil && spec.Volume.Jiva != nil
-}
-
-// jivaVolumePlugin provides a concrete implementation of volume.Deleter interface. 
-// This deleter instance would manage the deletion of a jiva volume.
-func (plugin *jivaVolumePlugin) NewDeleter(spec *volume.Spec) (volume.Deleter, error) {
-	return plugin.newDeleterInternal(spec, &JivaOrchestrator{})
-}
-
-func (plugin *jivaVolumePlugin) newDeleterInternal(spec *volume.Spec, manager jivaManager) (volume.Deleter, error) {
-
-	return &jivaDeleter{
-		jiva: &jiva{
-			volName:  spec.Name(),
-			volumeID: spec.Volume.Jiva.VolumeID,
-			manager:  manager,
-			plugin:   plugin,
-		}}, nil
-}
-
-// jivaVolumePlugin provides a concrete implementation of volume.Provisioner
-// interface. This provisoner instance would manage the creation of a new jiva
-// volume.
-func (plugin *jivaVolumePlugin) NewProvisioner(options volume.VolumePluginOptions) (volume.Provisioner, error) {
-	return plugin.newProvisionerInternal(options, &JivaOrchestrator{})
-}
-
-func (plugin *awsElasticBlockStorePlugin) newProvisionerInternal(options volume.VolumeOptions, manager jivaManager) (volume.Provisioner, error) {
-
-	return &jivaProvisioner{
-		jiva: &jiva{
-			manager: manager,
-			plugin:  plugin,
-		},
-		options: options,
-	}, nil
-}
-
-// This is the primary entrypoint for jiva volume plugin.
-// In-fact this is true for all volume plugins.
-func ProbeVolumePlugins() []volume.VolumePlugin {
-	return []volume.VolumePlugin{&jivaVolumePlugin{nil}}
-}
-
-// TODO
-//  Check the naming !!! Is this some type vs. source ?
-func getVolumeSource(
-	spec *volume.Spec) (*v1.JivaVolumeSource, bool, error) {
-	if spec.Volume != nil && spec.Volume.Jiva != nil {
-		return spec.Volume.Jiva, spec.Volume.Jiva.ReadOnly, nil
+	capacity := c.options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
+	requestBytes := capacity.Value()
+	// Jiva works with gigabytes, convert to GiB with rounding up
+	requestGB := int(volume.RoundUpSize(requestBytes, 1024*1024*1024))
+	volumeOptions := &aws.VolumeOptions{
+		CapacityGB: requestGB,
+		Tags:       tags,
+		PVCName:    c.options.PVC.Name,
+	}
+	// Apply Parameters (case-insensitive). We leave validation of
+	// the values to the orchestrator.
+	for k, v := range c.options.Parameters {
+		switch strings.ToLower(k) {
+		case "type":
+			volumeOptions.VolumeType = v
+		case "zone":
+			volumeOptions.AvailabilityZone = v
+		case "iopspergb":
+			volumeOptions.IOPSPerGB, err = strconv.Atoi(v)
+			if err != nil {
+				return "", 0, nil, fmt.Errorf("invalid iopsPerGB value %q, must be integer between 1 and 30: %v", v, err)
+			}
+		case "encrypted":
+			volumeOptions.Encrypted, err = strconv.ParseBool(v)
+			if err != nil {
+				return "", 0, nil, fmt.Errorf("invalid encrypted boolean value %q, must be true or false: %v", v, err)
+			}
+		case "kmskeyid":
+			volumeOptions.KmsKeyId = v
+		default:
+			return "", 0, nil, fmt.Errorf("invalid option %q for volume plugin %s", k, c.plugin.GetPluginName())
+		}
 	}
 
-	return nil, false, fmt.Errorf("Spec does not reference any JIVA volume type")
+	name, err := orchestrator.CreateDisk(volumeOptions)
+	if err != nil {
+		glog.V(2).Infof("Error creating JIVA volume: %v", err)
+		return "", 0, nil, err
+	}
+	glog.V(2).Infof("Successfully created JIVA volume %s", name)
+
+	labels, err := orchestrator.GetVolumeLabels(name)
+	if err != nil {
+		// We don't really want to leak the volume here...
+		glog.Errorf("error building labels for new JIVA volume %q: %v", name, err)
+	}
+
+	return name, int(requestGB), labels, nil
 }

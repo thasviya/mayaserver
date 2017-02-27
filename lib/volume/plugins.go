@@ -1,3 +1,9 @@
+// This file exposes volume plugin related contracts.
+// Hence, any specific volume plugin implementor will
+// implement the logic that aligns to the contracts
+// exposed here.
+// Some of the plugin based interfaces delegate to
+// volume based interfaces to do the actual work.
 package volume
 
 import (
@@ -29,7 +35,8 @@ func NewSpecFromVolume(vs *v1.Volume) *Spec {
 	}
 }
 
-// VolumePluginOptions contains option information about a volume.
+// VolumePluginOptions contains option information that will
+// be useful to a volume plugin's operations.
 type VolumePluginOptions struct {
 
 	// PVC is reference to the claim that lead to provisioning of a new PV.
@@ -45,8 +52,9 @@ type VolumePluginOptions struct {
 	Parameters map[string]string
 }
 
-// VolumePlugin is an interface to volume plugins that can be used by
-// mayaserver to instantiate and manage volume plugins.
+// VolumePlugin is an interface to volume based plugins 
+// used by mayaserver. This provides the blueprint to instantiate
+// and provides other functions that help in managing these plugins.
 type VolumePlugin interface {
 	// Init initializes the plugin.  This will be called exactly once
 	// before any New* calls are made - implementations of plugins may
@@ -114,8 +122,8 @@ type VolumePluginAspect interface {
 	GetOrchProvider() orchprovider.Interface
 }
 
-// VolumePluginMgr tracks registered plugins.
-type VolumePluginMgr struct {
+// VolumePluginTracker tracks registered plugins.
+type VolumePluginTracker struct {
 	mutex   sync.Mutex
 	plugins map[string]VolumePlugin
 }
@@ -153,7 +161,7 @@ type VolumePluginConfig struct {
 // InitPlugins initializes each plugin.  All plugins must have unique names.
 // This must be called exactly once before any New* methods are called on any
 // plugins.
-func (pm *VolumePluginMgr) InitPlugins(plugins []VolumePlugin, aspect VolumePluginAspect) error {
+func (pm *VolumePluginTracker) InitPlugins(plugins []VolumePlugin, aspect VolumePluginAspect) error {
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
 
@@ -188,7 +196,7 @@ func (pm *VolumePluginMgr) InitPlugins(plugins []VolumePlugin, aspect VolumePlug
 // FindPluginBySpec looks for a plugin that can support a given volume
 // specification.  If no plugins can support or more than one plugin can
 // support it, return error.
-func (pm *VolumePluginMgr) FindPluginBySpec(spec *Spec) (VolumePlugin, error) {
+func (pm *VolumePluginTracker) FindPluginBySpec(spec *Spec) (VolumePlugin, error) {
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
 
@@ -209,7 +217,7 @@ func (pm *VolumePluginMgr) FindPluginBySpec(spec *Spec) (VolumePlugin, error) {
 
 // FindPluginByName fetches a plugin by name.  If no plugin
 // is found, returns error.
-func (pm *VolumePluginMgr) FindPluginByName(name string) (VolumePlugin, error) {
+func (pm *VolumePluginTracker) FindPluginByName(name string) (VolumePlugin, error) {
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
 
@@ -231,7 +239,7 @@ func (pm *VolumePluginMgr) FindPluginByName(name string) (VolumePlugin, error) {
 
 // FindProvisionablePluginByName fetches a provisionable volume plugin by name.  
 // If no plugin is found, returns error.
-func (pm *VolumePluginMgr) FindProvisionablePluginByName(name string) (ProvisionableVolumePlugin, error) {
+func (pm *VolumePluginTracker) FindProvisionablePluginByName(name string) (ProvisionableVolumePlugin, error) {
 	volumePlugin, err := pm.FindPluginByName(name)
 	if err != nil {
 		return nil, err
@@ -244,7 +252,7 @@ func (pm *VolumePluginMgr) FindProvisionablePluginByName(name string) (Provision
 
 // FindDeletablePluginByName fetches a persistent volume plugin by name. If
 // no plugin is found, returns error.
-func (pm *VolumePluginMgr) FindDeletablePluginByName(name string) (DeletableVolumePlugin, error) {
+func (pm *VolumePluginTracker) FindDeletablePluginByName(name string) (DeletableVolumePlugin, error) {
 	volumePlugin, err := pm.FindPluginByName(name)
 	if err != nil {
 		return nil, err

@@ -1,3 +1,8 @@
+// This file models every volume action in form of an interface.
+// 
+// QUERY: How are these related to plugin based interfaces ?
+//    The procedure to create concrete instances of these interfaces
+// are exposed via concrete instance(s) of volume plugin(s).
 package volume
 
 // Volume represents an entity that is created by any
