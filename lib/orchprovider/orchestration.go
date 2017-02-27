@@ -12,7 +12,7 @@ type Interface interface {
 
   // This is a builder for StoragePlacements interface. Will return 
   // false if not supported.
-  StoragePlacements() (StoragePlacements, error)
+  StoragePlacements() (StoragePlacements, bool)
 }
 
 // StoragePlacement provides the blueprint for storage related
