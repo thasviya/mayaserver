@@ -12,12 +12,21 @@ import (
 
 // Spec is an internal representation of a volume.
 // All API volume types translate to Spec.
+//
+// NOTE:
+//    Spec is the one which is understood across various packages
+// in this project.
+//
+// TODO
+// Move this to lib/api ?
 type Spec struct {
 	Volume   *v1.Volume
 	ReadOnly bool
 }
 
 // Name returns the name of Volume.
+// TODO
+// Move this to lib/api ?
 func (spec *Spec) Name() string {
 	switch {
 	case spec.Volume != nil:
@@ -37,6 +46,8 @@ func NewSpecFromVolume(vs *v1.Volume) *Spec {
 
 // VolumePluginOptions contains option information that will
 // be useful to a volume plugin's operations.
+// TODO
+// Move this to lib/api ?
 type VolumePluginOptions struct {
 
 	// PVC is reference to the claim that lead to provisioning of a new PV.

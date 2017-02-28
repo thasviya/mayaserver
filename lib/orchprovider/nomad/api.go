@@ -30,7 +30,58 @@ type nomadStorageApi struct {
 //    Nomad does not have persistent volume as its first class citizen.
 // Hence, this resource should exhibit storage characteristics. The validations
 // for this should have been done at the volume plugin implementation.
-func (nc *nomadStorageApi) CreateStorage() {
+func (nsApi *nomadStorageApi) CreateStorage() error {
+
+  // TODO
+  // These are lot of http API calls.
+  //
+  // Need to think better !!!
+  //  1. Do I need so many calls ?
+  //  2. Do I need to invoke Deregister on error ?  
+  //  3. What is the meaning of ForceEvaluate ? Do I need it?
+  //  4. What to do if Summary returns an in-progress state ?
+  
+  // func (j *Jobs) Info(jobID string, q *QueryOptions) (*Job, *QueryMeta, error)
+  job, qMeta, err := nsApi.Http().Jobs.Info(jobID, qOpts)
+  
+  if err != nil {
+    return err
+  }
+  
+  if job != nil {
+    // job exists already
+    // check the labels, tags, etc
+    // goto summary block
+    // or
+    // return already exists error
+  }
+  
+  // func (j *Jobs) Validate(job *Job, q *WriteOptions) (*JobValidateResponse, *WriteMeta, error)
+  jValRes, valMeta, err := nsApi.Http().Jobs.Validate(job, wOpts)
+  
+  if err != nil {
+    return err
+  }
+  
+  //func (j *Jobs) Register(job *Job, q *WriteOptions) (string, *WriteMeta, error)
+  evalID, evalMeta, err := nsApi.Http().Jobs.Register(job, wOpts)
+  
+  if err != nil {
+    return err
+  }
+  
+  // func (j *Jobs) Summary(jobID string, q *QueryOptions) (*JobSummary, *QueryMeta, error)
+  jSum, sumMeta, err := nsApi.Http().Jobs.Summary(jobID, qOpts)
+  
+  if err != nil {
+    // Check options like:
+    //  1. retry on final err,
+    //  2. deregister on final err,
+    //  3. return on final err
+    return err
+  }
+  
+  return nil
 }
 
 // Create & submit a job spec that removes a resource in Nomad cluster.
@@ -39,7 +90,7 @@ func (nc *nomadStorageApi) CreateStorage() {
 //    Nomad does not have persistent volume as its first class citizen.
 // Hence, this resource should exhibit storage characteristics. The validations
 // for this should have been done at the volume plugin implementation.
-func (nc *nomadStorageApi) DeleteStorage() {
+func (nsApi *nomadStorageApi) DeleteStorage() {
 }
 
 // Apis provides a means to communicate with Nomad Apis
