@@ -7,14 +7,14 @@
 package volume
 
 import (
-  "github.com/openebs/mayaserver/lib/api/v1"
+	"github.com/openebs/mayaserver/lib/api/v1"
 )
 
-// Spec is an internal representation of a volume.  
+// Spec is an internal representation of a volume.
 // All API volume types translate to Spec.
 type Spec struct {
-	Volume           *v1.Volume
-	ReadOnly         bool
+	Volume   *v1.Volume
+	ReadOnly bool
 }
 
 // Name returns the name of Volume.
@@ -27,7 +27,7 @@ func (spec *Spec) Name() string {
 	}
 }
 
-// NewSpecFromVolume creates an Spec from a supplied 
+// NewSpecFromVolume creates an Spec from a supplied
 // v1.Volume type
 func NewSpecFromVolume(vs *v1.Volume) *Spec {
 	return &Spec{
@@ -52,7 +52,7 @@ type VolumePluginOptions struct {
 	Parameters map[string]string
 }
 
-// VolumePlugin is an interface to volume based plugins 
+// VolumePlugin is an interface to volume based plugins
 // used by mayaserver. This provides the blueprint to instantiate
 // and provides other functions that help in managing these plugins.
 type VolumePlugin interface {
@@ -86,9 +86,8 @@ type VolumePlugin interface {
 // ProvisionableVolumePlugin is an extended interface of VolumePlugin and is
 // used to create volumes.
 type ProvisionableVolumePlugin interface {
-
 	VolumePlugin
-	
+
 	// NewProvisioner creates a new volume.Provisioner which knows how to
 	// create PersistentVolumes in accordance with the plugin's underlying
 	// storage provider
@@ -99,9 +98,8 @@ type ProvisionableVolumePlugin interface {
 // by persistent volumes that want to be deleted from the storage infrastructure
 // after their release from a PersistentVolumeClaim.
 type DeletableVolumePlugin interface {
-
 	VolumePlugin
-	
+
 	// NewDeleter creates a new volume.Deleter which knows how to delete this
 	// resource in accordance with the underlying storage provider after the
 	// volume's release from a claim
@@ -132,7 +130,7 @@ type VolumePluginTracker struct {
 // specific to the plugin will be passed to the plugin's
 // ProbeVolumePlugins(config) func.  Reasonable defaults will be provided by
 // the binary hosting the plugins while allowing override of those default
-// values.  Those config values are then set to an instance of 
+// values.  Those config values are then set to an instance of
 // VolumePluginConfig and passed to the plugin.
 //
 // Values in VolumeConfig are intended to be relevant to several plugins, but
@@ -237,7 +235,7 @@ func (pm *VolumePluginTracker) FindPluginByName(name string) (VolumePlugin, erro
 	return pm.plugins[matches[0]], nil
 }
 
-// FindProvisionablePluginByName fetches a provisionable volume plugin by name.  
+// FindProvisionablePluginByName fetches a provisionable volume plugin by name.
 // If no plugin is found, returns error.
 func (pm *VolumePluginTracker) FindProvisionablePluginByName(name string) (ProvisionableVolumePlugin, error) {
 	volumePlugin, err := pm.FindPluginByName(name)

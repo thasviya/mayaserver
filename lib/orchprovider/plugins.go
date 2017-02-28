@@ -22,7 +22,12 @@ var (
 )
 
 // RegisterOrchProvider registers a orchprovider.Factory by name.
-// This is expected to happen during binary startup.
+//
+// This is expected to happen during binary startup. 
+//
+// How ?
+//    Each implementation of orchestration provider need to call 
+// RegisterOrchProvider inside their init() function.
 func RegisterOrchProvider(name string, orchestrator Factory) {
 	providersMutex.Lock()
 	defer providersMutex.Unlock()
@@ -54,10 +59,10 @@ func OrchProviders() []string {
 	return names
 }
 
-// GetOrchProvider creates an instance of the named orchestration provider, 
+// GetOrchProvider creates an instance of the named orchestration provider,
 // or nil if the name is unknown.  The error return is only used if the named
-// provider was known but failed to initialize. The config parameter specifies 
-// the io.Reader handler of the configuration file for the orchestration 
+// provider was known but failed to initialize. The config parameter specifies
+// the io.Reader handler of the configuration file for the orchestration
 // provider, or nil for no configuation.
 func GetOrchProvider(name string, config io.Reader) (Interface, error) {
 	providersMutex.Lock()
@@ -69,6 +74,9 @@ func GetOrchProvider(name string, config io.Reader) (Interface, error) {
 	return f(config)
 }
 
+// TODO
+// Who calls this ?
+//
 // InitOrchProvider creates an instance of the named orchestration provider.
 func InitOrchProvider(name string, configFilePath string) (Interface, error) {
 	var orchestrator Interface

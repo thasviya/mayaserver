@@ -1,13 +1,13 @@
-// This file provides the necessary implementation to establish jiva 
+// This file provides the necessary implementation to establish jiva
 // as a mayaserver volume plugin.
 package jiva
 
 import (
-  "github.com/openebs/mayaserver/lib/volume"
+	"github.com/openebs/mayaserver/lib/volume"
 )
 
 const (
-  // A well defined namespaced name given to jiva volume plugin
+	// A well defined namespaced name given to jiva volume plugin
 	jivaVolumePluginName = "openebs.io/jiva"
 )
 
@@ -19,7 +19,7 @@ type jivaVolumePlugin struct {
 	aspect volume.VolumePluginAspect
 }
 
-// Init does the generic initialization of jivaVolumePlugin. It sets the aspect 
+// Init does the generic initialization of jivaVolumePlugin. It sets the aspect
 // of jivaVolumePlugin.
 func (plugin *jivaVolumePlugin) Init(aspect volume.VolumePluginAspect) error {
 	plugin.aspect = aspect
@@ -43,13 +43,13 @@ func (plugin *jivaVolumePlugin) GetVolumeName(spec *volume.Spec) (string, error)
 	return volumeSource.VolumeID, nil
 }
 
-// CanSupport checks whether the supplied spec belongs to here i.e. jiva volume 
+// CanSupport checks whether the supplied spec belongs to here i.e. jiva volume
 // plugin
 func (plugin *jivaVolumePlugin) CanSupport(spec *volume.Spec) bool {
 	return spec.Volume != nil && spec.Volume.Jiva != nil
 }
 
-// jivaVolumePlugin provides a concrete implementation of volume.Deleter interface. 
+// jivaVolumePlugin provides a concrete implementation of volume.Deleter interface.
 // This deleter instance would manage the deletion of a jiva volume.
 func (plugin *jivaVolumePlugin) NewDeleter(spec *volume.Spec) (volume.Deleter, error) {
 	return plugin.newDeleterInternal(spec, &JivaOrchestrator{})

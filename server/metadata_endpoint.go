@@ -25,13 +25,13 @@ func (s *HTTPServer) MetaSpecificRequest(resp http.ResponseWriter, req *http.Req
 
 	// We do an exact suffix comparision
 	switch {
-	
+
 	case strings.Compare(path, "/instance-id") == 0:
 		return s.metaInstanceID(resp, req)
-		
+
 	case strings.Compare(path, "/placement/availability-zone") == 0:
 		return s.metaAvailabilityZone(resp, req)
-		
+
 	default:
 		return nil, CodedError(405, ErrInvalidMethod)
 	}

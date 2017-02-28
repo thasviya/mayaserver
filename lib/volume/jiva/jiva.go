@@ -1,6 +1,6 @@
 package jiva
 
-// jiva represents the implementation that aligns to volume.Volume 
+// jiva represents the implementation that aligns to volume.Volume
 // interface. jiva volumes are disk resources provided by OpenEBS.
 //
 // NOTE:
@@ -8,21 +8,21 @@ package jiva
 // various action based jiva structures.
 type jiva struct {
 
-  // Name of the jiva volume, that can be easily remembered by the 
-  // operators
+	// Name of the jiva volume, that can be easily remembered by the
+	// operators
 	volName string
-	
-	// Unique id of the volume, used to find the disk resource 
+
+	// Unique id of the volume, used to find the disk resource
 	// in the provider.
 	volumeID aws.KubernetesVolumeID
-		
+
 	// Interface that facilitates interaction with jiva provider
 	provider jivaProvider
-	
+
 	// TODO
 	//    Check if this is required ?
 	// A link to its own plugin
-	plugin  *jivaVolumePlugin	
+	plugin *jivaVolumePlugin
 }
 
 // jivaDeleter represents the implementation that aligns to volume.Deleter
@@ -30,7 +30,6 @@ type jiva struct {
 type jivaDeleter struct {
 	*jiva
 }
-
 
 func (d *jivaDeleter) GetName() string {
 	return d.volName
@@ -44,23 +43,23 @@ func (d *jivaDeleter) Delete() error {
 // interface.
 type jivaProvisioner struct {
 	*jiva
-	
+
 	// volume related options tailored into volume.VolumePluginOptions type
-	options   volume.VolumePluginOptions
-	
+	options volume.VolumePluginOptions
+
 	// TODO
 	//    Check if this is required ?
 	namespace string
 }
 
 // jivaProvider interface sets up the blueprint for various jiva volume
-// provisioning operations namely creation, deletion, etc. 
+// provisioning operations namely creation, deletion, etc.
 type jivaProvider interface {
 
-  // CreateVolume will create a jiva volume. It makes use of an instance of 
-  // volume.Provisioner interface.
+	// CreateVolume will create a jiva volume. It makes use of an instance of
+	// volume.Provisioner interface.
 	CreateVolume(provisioner *jivaProvisioner) (volumeID volume.MayaVolumeID, volumeSizeGB int, labels map[string]string, err error)
-	
+
 	// DeleteVolume will delete a jiva volume. It makes use of an instance of
 	// volume.Deleter interface.
 	DeleteVolume(deleter *jivaDeleter) error
@@ -71,7 +70,7 @@ type jivaProvider interface {
 // provider.
 type JivaOrchestrator struct{}
 
-// DeleteVolume will delete the jiva resource from appropriate 
+// DeleteVolume will delete the jiva resource from appropriate
 // orchestrator
 func (jOrch *JivaOrchestrator) DeleteVolume(d *jivaDeleter) error {
 	orchestrator, err := d.jiva.plugin.aspect.GetOrchProvider()
