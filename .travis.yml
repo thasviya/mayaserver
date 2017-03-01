@@ -7,24 +7,24 @@ go:
   - 1.8
 before_install:
   - sudo apt-get update
-  - sudo apt-get install -y docker-engine liblxc1 lxc-dev lxc
+  - sudo apt-get install -y docker-engine liblxc1 lxc-dev lxc 
   - sudo apt-get install -y qemu
 install:
   - make bootstrap
-script: # Not running "test",need to fix some deps issues
-  - make bin
+script: #test need to fix before running in travis
+  - make bin 
   - ls -la pkg/
 deploy:
   provider: releases
   api_key:
-    secure: na/NPsgDHGGRaWxRSCo5gH3TPrEutNvhEK3q2k99bbW2INe0FZ+FIPeuL9rqV8eCQi8SWJGHNFjFyMRR798RRSn8bdiK0pxJXzYvphUEH2Azzoqr65TaJHpHNTkv1WTK9OtgahT71MbmIx777U6Vd6ylyJyWja+LPhY/z66XOYQmuXR2ds7FRBlAcWg8C0KIFTLYlms5C9RKwLS2jP5C8tlJBQXMDEk7ejR1mKn3R6KQyyHICGKPGhNE+d7iMs0qhhuGIhcDwXl1olChAAITOGyWEmjc2GeUbFALo8OXdQx9qBO7saw75IzyYV/itBjE0RpuM90jKuFzKGiotSyw7Fs0KgrjHC7keuaNMqBWgKl6qoAj2a5VVEBtx8k941hRLs/VpjQ+K8wJJpjlSR8vh906b8e+HL8BKJEifF09fKBTLd0AWy9I3x6TolmRqiamvIHEkup1fZqblhhe2ZLvwuuyfl3t1FTkkon5BASgSqFdBAhR3eAD/LOtrghjaRX7wCZCzKDEaS9QLeu9UbC+bmnaOo60Gaeyp/DN5FLc4cV/vZozroesu+UEtQIrC6VDlFNYfY0V1ETKpfEQ4I8yByDHx/KjMWDyUGd8e5tm0qsD1lW1yVekh5CjQRHpzShkmKvFieeVfqVy/aGB4GrTeWSxcKiN8W0ekcgCRYut6y0=
+    secure: gixl7UUJK7XlzH9TjLx3JnBPFgHFt7goC6xd0BYoGYPNNKIDKHmc2afXrF/CBSKU/afwVMctHqGbj0bqG+jDVIC6nRoEwz64JaByJpOZZWvDi/Qknu0IzjOrUVS1YPfxddJ/DJzy28APNima2vRbS7QJLds/LGgj3lSp+BWp7eLWNq7Gw6IXtX3mL8AS3YpEHTeoO5E8EiHHoz1QIoXrszpsXCRF0+R1/4MvcfPv//4hJ5wyEYOSwCK1eEwi1BaPy/BtI3DC62LnF4JRkVJb7F31VrnLAevJfUgoUhKi1nadu0Idy71A9SITYhhxKXamgp/X93ig51jbMT0wYiz5+S3DkgtcDaYf389uyaHrgphbzjs/IFFTa2o5yGgh5A8oGWy1Pdd6gzFf+bftFkYtzkTECNZKjNd4Ft5e55CzpVOt2Z9oSD0NuMZtgkM9sz0Rs1IiCW/Y73o6dV4Z7sxY2nCbO6iNgW0bUEIk9l2wFJEN0+LGENaR7+aRkH6NesNk+bIOhY4lbHIis8fMTrkzOSQWVnjNs+7LJrA3GuokhsIMmJO8h9A5gd0K5QpYdIu4UQJH0M7LiEz16LnKK4+/h7OpgensKgC+MEwR8hSNDeeQZFx88R/vb/fLA1JwyeRyON6paD3K65ibODJIrxBZSV9AtXq0NyiOIRMUHKgZGEs=
   file_glob: true
   file: pkg/mayaserver-linux_*.zip
   skip_cleanup: true
-  overwrite: true        
+  overwrite: true
   on:
     repo: openebs/mayaserver
     tags: true
 branches:
   except:
-    - /^*-v[0-9]/      
+    - /^*-v[0-9]/
