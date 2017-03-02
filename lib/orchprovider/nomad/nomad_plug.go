@@ -1,3 +1,7 @@
+// This file acts a bi-directional plug to below resources:
+//
+//    1. Mayaserver's orchprovider types
+//    2. Hashicorp Nomad's types
 package nomad
 
 import (
@@ -22,7 +26,7 @@ const NomadOrchProviderName = "nomad"
 func init() {
 	orchprovider.RegisterOrchProvider(
 		NomadOrchProviderName,
-		func(config io.Reader) (orchprovider.Interface, error) {
+		func(config io.Reader) (orchprovider.OrchestratorInterface, error) {
 			apis := newNomadApiProvider()
 			return newNomadOrchestrator(config, apis)
 		})
@@ -31,7 +35,7 @@ func init() {
 // NomadOrchestrator is a concrete representation of following
 // interfaces:
 //
-//  1. orchprovider.Interface &
+//  1. orchprovider.OrchestratorInterface &
 //  2. orchprovider.StoragePlacements
 type NomadOrchestrator struct {
 	// nStorApis represents an instance capable of invoking
@@ -82,14 +86,14 @@ func newNomadOrchestrator(config io.Reader, apis Apis) (*NomadOrchestrator, erro
 }
 
 // Name provides the name of this orchestrator.
-// This is an implementation of the orchprovider.Interface interface.
+// This is an implementation of the orchprovider.OrchestratorInterface interface.
 func (n *NomadOrchestrator) Name() string {
 
 	return NomadOrchProviderName
 }
 
 // StoragePlacements is this orchestration provider's
-// implementation of the orchprovider.Interface interface.
+// implementation of the orchprovider.OrchestratorInterface interface.
 func (n *NomadOrchestrator) StoragePlacements() (orchprovider.StoragePlacements, bool) {
 
 	return n, true

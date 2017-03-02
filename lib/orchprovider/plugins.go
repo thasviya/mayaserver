@@ -9,11 +9,11 @@ import (
 	"github.com/golang/glog"
 )
 
-// Factory is a function that returns a orchprovider.Interface.
+// Factory is a function that returns a orchprovider.OrchestratorInterface.
 // The config parameter provides an io.Reader handler to the factory in
 // order to load specific configurations. If no configuration is provided
 // the parameter is nil.
-type Factory func(config io.Reader) (Interface, error)
+type Factory func(config io.Reader) (OrchestratorInterface, error)
 
 // All registered orchestration providers.
 var (
@@ -66,7 +66,7 @@ func OrchProviders() []string {
 // provider was known but failed to initialize. The config parameter specifies
 // the io.Reader handler of the configuration file for the orchestration
 // provider, or nil for no configuation.
-func GetOrchProvider(name string, config io.Reader) (Interface, error) {
+func GetOrchProvider(name string, config io.Reader) (OrchestratorInterface, error) {
 	providersMutex.Lock()
 	defer providersMutex.Unlock()
 
@@ -82,8 +82,8 @@ func GetOrchProvider(name string, config io.Reader) (Interface, error) {
 // This will currently be triggered while starting the binary as a http service ?
 //
 // InitOrchProvider creates an instance of the named orchestration provider.
-func InitOrchProvider(name string, configFilePath string) (Interface, error) {
-	var orchestrator Interface
+func InitOrchProvider(name string, configFilePath string) (OrchestratorInterface, error) {
+	var orchestrator OrchestratorInterface
 	var err error
 
 	if name == "" {

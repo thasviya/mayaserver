@@ -1,0 +1,70 @@
+// This file handles jiva storage logic related to mayaserver's orchestration
+// provider.
+//
+// NOTE:
+//    jiva storage delegates the provisioning, placement & other operational
+// aspects to an orchestration provider. Some of the orchestration providers
+// can be Kubernetes, Nomad, etc.
+package jiva
+
+import (
+	"fmt"
+
+	"github.com/openebs/mayaserver/lib/api/v1"
+	"github.com/openebs/mayaserver/lib/volume"
+)
+
+type JivaOps interface {
+	Provision(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
+
+	Delete(*v1.PersistentVolume) error
+}
+
+func newJivaOpsProvider(aspect volume.VolumePluginAspect) (JivaOps, error) {
+	if aspect == nil {
+		return nil, fmt.Errorf("Nil volume plugin aspect was provided")
+	}
+
+	return &jivaOrchestrator{
+		aspect: aspect,
+	}, nil
+}
+
+// jivaOrchestrator is the concrete implementation for JivaOps interface.
+type jivaOrchestrator struct {
+	// Orthogonal concerns and their management w.r.t jiva storage
+	// is done via aspect
+	aspect volume.VolumePluginAspect
+}
+
+// Provision tries to creates a jiva volume via an orchestrator
+func (jOrch *jivaOrchestrator) Provision(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
+	orchestrator, err := jOrch.aspect.GetOrchProvider()
+	if err != nil {
+		return nil, err
+	}
+
+	storageOrchestrator, ok := orchestrator.StoragePlacements()
+
+	if !ok {
+		return nil, fmt.Errorf("Orchestrator '%s' does not provide storage services", orchestrator.Name())
+	}
+
+	return storageOrchestrator.StoragePlacementReq(pvc)
+}
+
+// Delete tries to delete the jiva volume via an orchestrator
+func (jOrch *jivaOrchestrator) Delete(pv *v1.PersistentVolume) error {
+	orchestrator, err := jOrch.aspect.GetOrchProvider()
+	if err != nil {
+		return err
+	}
+
+	storageOrchestrator, ok := orchestrator.StoragePlacements()
+
+	if !ok {
+		return fmt.Errorf("Orchestrator '%s' does not provide storage services", orchestrator.Name())
+	}
+
+	return storageOrchestrator.StorageRemovalReq(pv)
+}

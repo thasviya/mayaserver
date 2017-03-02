@@ -13,61 +13,29 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	"github.com/openebs/mayaserver/lib/api/v1"
+	//"github.com/openebs/mayaserver/lib/api/v1"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 )
 
-// VolumePluginFactory is a function that returns a volume.VolumePlugin.
+// VolumeFactory is a function that returns a volume.VolumeInterface.
 // The config parameter provides an io.Reader handler to the factory in
 // order to load specific configurations. If no configuration is provided
 // the parameter is nil.
-type VolumePluginFactory func(config io.Reader, aspect VolumePluginAspect) (VolumePlugin, error)
-
-// VolumePlugin is an interface to volume based plugins
-// used by mayaserver. This provides the blueprint to instantiate
-// and provides other functions that help in managing these plugins.
-type VolumePlugin interface {
-	// Name returns the plugin's name.  Plugins should use namespaced names
-	// such as "org.com/volume".  The "openebs.io" namespace is
-	// reserved for plugins which are bundled with openebs.
-	GetPluginName() string
-}
-
-// ProvisionableVolumePlugin is an extended interface of VolumePlugin and is
-// used to create volumes.
-type ProvisionableVolumePlugin interface {
-	VolumePlugin
-
-	// NewProvisioner creates a new volume.Provisioner which knows how to
-	// create PersistentVolumes in accordance with the plugin's underlying
-	// storage provider
-	NewProvisioner(pvc v1.PersistentVolumeClaim) (Provisioner, error)
-}
-
-// DeletableVolumePlugin is an extended interface of VolumePlugin and is used
-// by persistent volumes that want to be deleted from the storage infrastructure
-// after their release from a PersistentVolumeClaim.
-type DeletableVolumePlugin interface {
-	VolumePlugin
-
-	// NewDeleter creates a new volume.Deleter which knows how to delete this
-	// resource in accordance with the underlying storage provider after the
-	// volume's release from a claim
-	NewDeleter(pv *v1.PersistentVolume) (Deleter, error)
-}
+type VolumeFactory func(config io.Reader, aspect VolumePluginAspect) (VolumeInterface, error)
 
 // VolumePluginAspect is an interface that provides a blueprint for plugins
-// to cater to their needs that stretches beyond volume related operations.
+// to cater to the needs when a plugin requires the help of a third party
+// resource (library, provider, etc) to materialize a requirement.
 type VolumePluginAspect interface {
 
 	// Get the suitable orchestration provider.
-	// A plugin may be linked with its provider e.g.
+	// A volume plugin may be linked with its provider e.g.
 	// an orchestration provider like K8s, Nomad, Mesos, etc.
 	//
 	// Note:
 	//    OpenEBS believes in running storage software in containers & hence
-	// above examples.
-	GetOrchProvider() (orchprovider.Interface, error)
+	// above container specific orchestrators.
+	GetOrchProvider() (orchprovider.OrchestratorInterface, error)
 }
 
 // All registered volume plugins.
@@ -76,7 +44,7 @@ var (
 
 	// A mapped instance of volume plugin name with the plugin's
 	// initializer
-	volumePlugins = make(map[string]VolumePluginFactory)
+	volumePlugins = make(map[string]VolumeFactory)
 )
 
 // VolumePluginConfig is how volume plugins receive configuration.  An instance
@@ -110,11 +78,17 @@ type VolumePluginConfig struct {
 }
 
 // RegisterVolumePlugin registers a volume.VolumePlugin by name.
+// This is just a registry entry. The actual initialization is done
+// elsewhere with passing of dynamic parameters i.e.
+//
+//  1. volume plugin config file and
+//  2. volume aspect instance
 //
 // NOTE:
 //    Each implementation of volume plugin need to call
 // RegisterVolumePlugin inside their init() function.
-func RegisterVolumePlugin(name string, factory VolumePluginFactory) {
+//func RegisterVolumePlugin(name string, factory VolumePluginFactory) {
+func RegisterVolumePlugin(name string, factory VolumeFactory) {
 	volumePluginsMutex.Lock()
 	defer volumePluginsMutex.Unlock()
 
@@ -154,7 +128,8 @@ func VolumePlugins() []string {
 // volume plugin was known but failed to initialize. The config parameter specifies
 // the io.Reader handler of the configuration file for the volume
 // plugin, or nil for no configuation.
-func GetVolumePlugin(name string, config io.Reader, aspect VolumePluginAspect) (VolumePlugin, error) {
+//func GetVolumePlugin(name string, config io.Reader, aspect VolumePluginAspect) (VolumePlugin, error) {
+func GetVolumePlugin(name string, config io.Reader, aspect VolumePluginAspect) (VolumeInterface, error) {
 	volumePluginsMutex.Lock()
 	defer volumePluginsMutex.Unlock()
 
@@ -170,9 +145,9 @@ func GetVolumePlugin(name string, config io.Reader, aspect VolumePluginAspect) (
 // This will currently be triggered while starting the binary as a http service ?
 //
 // InitVolumePlugin creates an instance of the named volume plugin.
-func InitVolumePlugin(name string, configFilePath string, aspect VolumePluginAspect) (VolumePlugin, error) {
+func InitVolumePlugin(name string, configFilePath string, aspect VolumePluginAspect) (VolumeInterface, error) {
 	//var orchestrator Interface
-	var volumePlugin VolumePlugin
+	var volumeInterface VolumeInterface
 	var err error
 
 	if name == "" {
@@ -189,20 +164,20 @@ func InitVolumePlugin(name string, configFilePath string, aspect VolumePluginAsp
 		}
 
 		defer config.Close()
-		volumePlugin, err = GetVolumePlugin(name, config, aspect)
+		volumeInterface, err = GetVolumePlugin(name, config, aspect)
 	} else {
 		// Pass explicit nil so plugins can actually check for nil. See
 		// "Why is my nil error value not equal to nil?" in golang.org/doc/faq.
-		volumePlugin, err = GetVolumePlugin(name, nil, aspect)
+		volumeInterface, err = GetVolumePlugin(name, nil, aspect)
 	}
 
 	if err != nil {
 		return nil, fmt.Errorf("could not init volume plugin %q: %v", name, err)
 	}
 
-	if volumePlugin == nil {
+	if volumeInterface == nil {
 		return nil, fmt.Errorf("unknown volume plugin %q", name)
 	}
 
-	return volumePlugin, nil
+	return volumeInterface, nil
 }

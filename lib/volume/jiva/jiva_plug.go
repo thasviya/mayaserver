@@ -11,12 +11,12 @@ import (
 )
 
 const (
-	// A well defined namespaced name given to jiva volume plugin
-	jivaVolumePluginName = "openebs.io/jiva"
+	// A well defined namespaced name given to this volume plugin implementation
+	jivaStorPluginName = "openebs.io/jiva"
 )
 
 // This is invoked at startup.
-// TODO put the exact word rather than startup !!)
+// TODO put the exact word rather than startup !!
 //
 // NOTE:
 //    This is a Golang feature.
@@ -24,25 +24,34 @@ const (
 // hence available.
 func init() {
 	volume.RegisterVolumePlugin(
-		jivaVolumePluginName,
-		func(config io.Reader, aspect volume.VolumePluginAspect) (volume.VolumePlugin, error) {
-			return newJivaVolumePlugin(config, aspect)
+		jivaStorPluginName,
+		func(config io.Reader, aspect volume.VolumePluginAspect) (volume.VolumeInterface, error) {
+			return newJivaStor(config, aspect)
 		})
 }
 
-// jivaVolumePlugin is the concrete implementation that aligns to
-// volume.VolumePlugin, volume.DeletableVolumePlugin, ProvisionableVolumePlugin
-// interfaces. In other words this bridges jiva with mayaserver's volume plugin
-// contracts.
-type jivaVolumePlugin struct {
-	aspect volume.VolumePluginAspect
+// jivaStor is the concrete implementation that implements
+// following interfaces:
+//
+//  1. volume.VolumeInterface interface
+//  2. volume.Provisioner interface
+//  3. volume.Deleter interface
+type jivaStor struct {
+	// jivaOps abstracts the operations related to this jivaStor
+	// instance
+	jivaOps JivaOps
+
+	// TODO
+	// jConfig provides a handle to tune the operations of
+	// this jivaStor instance
+	//jConfig *JivaConfig
 }
 
-// newJivaVolumePlugin provides a new instance of Jiva VolumePlugin.
+// newJivaStor provides a new instance of jivaStor.
 // This function aligns with VolumePluginFactory type.
-func newJivaVolumePlugin(config io.Reader, aspect volume.VolumePluginAspect) (*jivaVolumePlugin, error) {
+func newJivaStor(config io.Reader, aspect volume.VolumePluginAspect) (*jivaStor, error) {
 
-	glog.Infof("Building jiva volume plugin")
+	glog.Infof("Building new instance of jiva storage")
 
 	// TODO
 	//jCfg, err := readJivaConfig(config)
@@ -53,57 +62,90 @@ func newJivaVolumePlugin(config io.Reader, aspect volume.VolumePluginAspect) (*j
 	// TODO
 	// validations of the populated config structure
 
-	// build the provisioner instance
-	jivaVolumePlug := &jivaVolumePlugin{
-		aspect: aspect,
-		//nConfig:    jCfg,
+	jivaOps, err := newJivaOpsProvider(aspect)
+	if err != nil {
+		return nil, err
 	}
 
-	return jivaVolumePlug, nil
+	// build the provisioner instance
+	jivaStor := &jivaStor{
+		//aspect: aspect,
+		jivaOps: jivaOps,
+		//jConfig:    jCfg,
+	}
+
+	return jivaStor, nil
 }
 
-// GetPluginName returns the namespaced name of this plugin i.e. jivaVolumePlugin
-// This is a contract implementation of volume.VolumePlugin
-func (plugin *jivaVolumePlugin) GetPluginName() string {
-	return jivaVolumePluginName
+// Name returns the namespaced name of this volume
+//
+// NOTE:
+//    This is a contract implementation of volume.VolumeInterface
+func (j *jivaStor) Name() string {
+	return jivaStorPluginName
 }
 
-// jivaVolumePlugin provides a concrete implementation of volume.Deleter interface.
-// This deleter instance would manage the deletion of a jiva volume.
-func (plugin *jivaVolumePlugin) NewDeleter(pv *v1.PersistentVolume) (volume.Deleter, error) {
-	return plugin.newDeleterInternal(pv, &JivaOrchestrator{})
+// jivaStor supports provisioning
+// This is made possible by its jivaOps property
+//
+// NOTE:
+//    This is a contract implementation of volume.VolumeInterface
+func (j *jivaStor) Provisioner() (volume.Provisioner, bool) {
+	return j, true
 }
 
-func (plugin *jivaVolumePlugin) newDeleterInternal(pv *v1.PersistentVolume, provider jivaProvider) (volume.Deleter, error) {
-
-	return &jivaDeleter{
-		jiva: &jiva{
-			pv:       pv,
-			provider: provider,
-			plugin:   plugin,
-		}}, nil
+// jivaStor supports deletion
+// This is made possible by its jivaOps property
+//
+// NOTE:
+//    This is a contract implementation of volume.VolumeInterface
+func (j *jivaStor) Deleter() (volume.Deleter, bool) {
+	return j, true
 }
 
-// jivaVolumePlugin provides a concrete implementation of volume.Provisioner
-// interface. This provisoner instance would manage the creation of a new jiva
-// volume.
-func (plugin *jivaVolumePlugin) NewProvisioner(pvc *v1.PersistentVolumeClaim) (volume.Provisioner, error) {
-	return plugin.newProvisionerInternal(pvc, &JivaOrchestrator{})
+// jivaStor provisions a volume via its jivaOps property.
+//
+// NOTE:
+//    This is a contract implementation of volume.Provisioner interface
+func (j *jivaStor) Provision(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
+
+	// TODO
+	// Validations of input i.e. claim
+
+	// Delegate to its provider
+	pv, err := j.jivaOps.Provision(pvc)
+
+	if err != nil {
+		// How to use Errorf ?
+		glog.V(2).Infof("Error creating jiva volume '%s' '%s': %v", pv.Name, pv.UID, err)
+		return nil, err
+	}
+
+	glog.V(2).Infof("Successfully created jiva volume '%s' '%s'", pv.Name, pv.UID)
+
+	return pv, nil
 }
 
-func (plugin *jivaVolumePlugin) newProvisionerInternal(pvc *v1.PersistentVolumeClaim, provider jivaProvider) (volume.Provisioner, error) {
+// jivaStor removes a volume via its jivaOps property.
+//
+// NOTE:
+//    This is a contract implementation of volume.Deleter interface
+func (j *jivaStor) Delete(pv *v1.PersistentVolume) error {
 
-	return &jivaProvisioner{
-		jiva: &jiva{
-			provider: provider,
-			plugin:   plugin,
-		},
-		pvc: pvc,
-	}, nil
-}
+	// TODO
+	// Validations if any
 
-// This is the primary entrypoint for jiva volume plugin.
-// In-fact this is true for all volume plugins.
-func ProbeVolumePlugins() []volume.VolumePlugin {
-	return []volume.VolumePlugin{&jivaVolumePlugin{nil}}
+	// Delegate to its provider
+	err := j.jivaOps.Delete(pv)
+
+	if err != nil {
+		// Errorf ?
+		glog.V(2).Infof("Error deleting jiva volume '%s' '%s': %v", pv.Name, pv.UID, err)
+		return err
+	}
+
+	glog.V(2).Infof("Successfully deleted jiva volume '%s' '%s'", pv.Name, pv.UID)
+
+	return nil
+
 }

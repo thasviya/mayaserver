@@ -4,15 +4,15 @@ import (
 	"github.com/openebs/mayaserver/lib/api/v1"
 )
 
-// Interface is an interface to the actual infrastructure.
-// It represents a pluggable mechanism for the ochestration
-// provider to invoke operations on the infrastructure
-// (managed by an orchestrator).
+// OrchestrationInterface is an interface abstraction of a real orchestrator.
+// It represents a pluggable mechanism for any orchestration
+// provider to invoke operations on the infrastructure managed by an
+// orchestrator.
 //
 // NOTE:
 //    The operations currently supported are related to storage
 // only.
-type Interface interface {
+type OrchestratorInterface interface {
 
 	// Name of the orchestration provider
 	Name() string
