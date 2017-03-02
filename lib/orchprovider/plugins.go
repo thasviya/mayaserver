@@ -23,19 +23,19 @@ var (
 
 // RegisterOrchProvider registers a orchprovider.Factory by name.
 //
-// This is expected to happen during binary startup. 
+// This is expected to happen during binary startup.
 //
 // How ?
-//    Each implementation of orchestration provider need to call 
+//    Each implementation of orchestration provider need to call
 // RegisterOrchProvider inside their init() function.
-func RegisterOrchProvider(name string, orchestrator Factory) {
+func RegisterOrchProvider(name string, factory Factory) {
 	providersMutex.Lock()
 	defer providersMutex.Unlock()
 	if _, found := providers[name]; found {
 		glog.Fatalf("Orchestration provider %q was registered twice", name)
 	}
 	glog.V(1).Infof("Registered orchestration provider %q", name)
-	providers[name] = orchestrator
+	providers[name] = factory
 }
 
 // IsOrchProvider returns true if name corresponds to an already
@@ -43,6 +43,7 @@ func RegisterOrchProvider(name string, orchestrator Factory) {
 func IsOrchProvider(name string) bool {
 	providersMutex.Lock()
 	defer providersMutex.Unlock()
+
 	_, found := providers[name]
 	return found
 }
@@ -53,6 +54,7 @@ func OrchProviders() []string {
 	names := []string{}
 	providersMutex.Lock()
 	defer providersMutex.Unlock()
+
 	for name := range providers {
 		names = append(names, name)
 	}
@@ -67,15 +69,17 @@ func OrchProviders() []string {
 func GetOrchProvider(name string, config io.Reader) (Interface, error) {
 	providersMutex.Lock()
 	defer providersMutex.Unlock()
-	f, found := providers[name]
+
+	factory, found := providers[name]
 	if !found {
 		return nil, nil
 	}
-	return f(config)
+	return factory(config)
 }
 
 // TODO
 // Who calls this ?
+// This will currently be triggered while starting the binary as a http service ?
 //
 // InitOrchProvider creates an instance of the named orchestration provider.
 func InitOrchProvider(name string, configFilePath string) (Interface, error) {
@@ -96,19 +100,19 @@ func InitOrchProvider(name string, configFilePath string) (Interface, error) {
 		}
 
 		defer config.Close()
-		orchestration, err = GetOrchProvider(name, config)
+		orchestrator, err = GetOrchProvider(name, config)
 	} else {
 		// Pass explicit nil so plugins can actually check for nil. See
 		// "Why is my nil error value not equal to nil?" in golang.org/doc/faq.
-		orchestration, err = GetOrchProvider(name, nil)
+		orchestrator, err = GetOrchProvider(name, nil)
 	}
 
 	if err != nil {
 		return nil, fmt.Errorf("could not init orchestration provider %q: %v", name, err)
 	}
-	if orchestration == nil {
+	if orchestrator == nil {
 		return nil, fmt.Errorf("unknown orchestration provider %q", name)
 	}
 
-	return orchestration, nil
+	return orchestrator, nil
 }

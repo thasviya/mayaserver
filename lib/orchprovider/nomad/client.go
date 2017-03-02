@@ -1,6 +1,9 @@
 package nomad
 
 import (
+	"io"
+	"os"
+
 	"github.com/hashicorp/nomad/api"
 	gcfg "gopkg.in/gcfg.v1"
 )
@@ -17,7 +20,6 @@ const (
 type NomadConfig struct {
 	Address string
 }
-
 
 // NomadClient is an abstraction over various connection modes (http, rpc)
 // to Nomad. Http client is currently supported.
@@ -39,8 +41,8 @@ type nomadClientUtil struct {
 	// The region to send API requests
 	region string
 
-  // Nomad server / cluster coordinates
-  nomadConf    *NomadConfig
+	// Nomad server / cluster coordinates
+	nomadConf *NomadConfig
 
 	caCert     string
 	caPath     string
@@ -54,7 +56,7 @@ type nomadClientUtil struct {
 func (m *nomadClientUtil) Http() (*api.Client, error) {
 	// Nomad API client config
 	apiCConf := api.DefaultConfig()
-	
+
 	// Set from environment variable
 	if v := os.Getenv(EnvNomadAddress); v != "" {
 		apiCConf.Address = v
@@ -81,8 +83,8 @@ func (m *nomadClientUtil) Http() (*api.Client, error) {
 		apiCConf.TLSConfig = t
 	}
 
-  // This has the http address & authentication details
-  // required to invoke Nomad APIs
+	// This has the http address & authentication details
+	// required to invoke Nomad APIs
 	return api.NewClient(apiCConf)
 }
 
@@ -98,9 +100,8 @@ func readNomadConfig(config io.Reader) (*NomadConfig, error) {
 		}
 	}
 
-  // TODO
-  // validations w.r.t config
+	// TODO
+	// validations w.r.t config
 
-	return &cfg, nil
+	return &nCfg, nil
 }
-

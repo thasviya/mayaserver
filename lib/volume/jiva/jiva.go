@@ -1,5 +1,12 @@
 package jiva
 
+import (
+	"fmt"
+
+	"github.com/golang/glog"
+	"github.com/openebs/mayaserver/lib/api/v1"
+)
+
 // jiva represents the implementation that aligns to volume.Volume
 // interface. jiva volumes are disk resources provided by OpenEBS.
 //
@@ -8,20 +15,20 @@ package jiva
 // various action based jiva structures.
 type jiva struct {
 
-	// Name of the jiva volume, that can be easily remembered by the
-	// operators
-	volName string
-
-	// Unique id of the volume, used to find the disk resource
-	// in the provider.
-	volumeID aws.KubernetesVolumeID
+	// An already created instance of jiva volume
+	// TODO
+	// Remove this to specific structs if this is not generic
+	pv *v1.PersistentVolume
 
 	// Interface that facilitates interaction with jiva provider
+	// i.e. orchestrator. The orchestrator related function calls
+	// should be initiated from this instance.
 	provider jivaProvider
 
 	// TODO
-	//    Check if this is required ?
 	// A link to its own plugin
+	// This is required to get its orchestrator
+	// Then why not inject the Aspect only rather than the whole plugin ?
 	plugin *jivaVolumePlugin
 }
 
@@ -31,12 +38,24 @@ type jivaDeleter struct {
 	*jiva
 }
 
-func (d *jivaDeleter) GetName() string {
-	return d.volName
-}
-
 func (d *jivaDeleter) Delete() error {
-	return d.provider.DeleteVolume(d)
+
+	// TODO
+	// Validations if any
+
+	// Delegate to its provider
+	err := d.provider.DeleteVolume(d)
+
+	if err != nil {
+		// Errorf ?
+		glog.V(2).Infof("Error deleting JIVA volume '%s' '%s': %v", d.pv.Name, d.pv.UID, err)
+		return err
+	}
+
+	glog.V(2).Infof("Successfully deleted JIVA volume '%s' '%s'", d.pv.Name, d.pv.UID)
+
+	return nil
+
 }
 
 // jivaProvisioner represents the implementation that aligns to volume.Provisioner
@@ -45,115 +64,74 @@ type jivaProvisioner struct {
 	*jiva
 
 	// volume related options tailored into volume.VolumePluginOptions type
-	options volume.VolumePluginOptions
+	pvc *v1.PersistentVolumeClaim
+}
+
+func (p *jivaProvisioner) Provision() (*v1.PersistentVolume, error) {
 
 	// TODO
-	//    Check if this is required ?
-	namespace string
+	// Validations of input i.e. claim
+
+	// Delegate to its provider
+	pv, err := p.provider.CreateVolume(p)
+
+	if err != nil {
+		// How to use Errorf ?
+		glog.V(2).Infof("Error creating JIVA volume '%s' '%s': %v", pv.Name, pv.UID, err)
+		return nil, err
+	}
+
+	glog.V(2).Infof("Successfully created JIVA volume '%s' '%s'", pv.Name, pv.UID)
+
+	return pv, nil
 }
 
 // jivaProvider interface sets up the blueprint for various jiva volume
 // provisioning operations namely creation, deletion, etc.
+//
+// NOTE:
+//    Jiva volume plugin delegates these operations to its provider.
+// Hence, the need for this interface.
 type jivaProvider interface {
 
-	// CreateVolume will create a jiva volume. It makes use of an instance of
-	// volume.Provisioner interface.
-	CreateVolume(provisioner *jivaProvisioner) (volumeID volume.MayaVolumeID, volumeSizeGB int, labels map[string]string, err error)
+	// CreateVolume will create a jiva volume. It makes use of orchestrator.
+	CreateVolume(provisioner *jivaProvisioner) (*v1.PersistentVolume, error)
 
-	// DeleteVolume will delete a jiva volume. It makes use of an instance of
-	// volume.Deleter interface.
+	// DeleteVolume will delete a jiva volume. It makes use of orchestrator.
 	DeleteVolume(deleter *jivaDeleter) error
 }
 
 // JivaOrchestrator is the concrete implementation for jivaProvider interface.
-// Jiva has a dependency on an orchestrator as its volume
-// provider.
 type JivaOrchestrator struct{}
 
-// DeleteVolume will delete the jiva resource from appropriate
-// orchestrator
-func (jOrch *JivaOrchestrator) DeleteVolume(d *jivaDeleter) error {
-	orchestrator, err := d.jiva.plugin.aspect.GetOrchProvider()
+// CreateVolume tries to creates a JIVA volume via an orchestrator
+func (jOrch *JivaOrchestrator) CreateVolume(p *jivaProvisioner) (*v1.PersistentVolume, error) {
+	orchestrator, err := p.plugin.aspect.GetOrchProvider()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	deleted, err := orchestrator.DeleteDisk(d.volumeID)
-	if err != nil {
-		glog.V(2).Infof("Error deleting JIVA volume %s: %v", d.volumeID, err)
-		return err
+	storageOrchestrator, ok := orchestrator.StoragePlacements()
+
+	if !ok {
+		return nil, fmt.Errorf("Orchestrator '%s' does not provide storage services", orchestrator.Name())
 	}
-	if deleted {
-		glog.V(2).Infof("Successfully deleted JIVA volume %s", d.volumeID)
-	} else {
-		glog.V(2).Infof("Successfully deleted JIVA volume %s (actually already deleted)", d.volumeID)
-	}
-	return nil
+
+	return storageOrchestrator.StoragePlacementReq(p.pvc)
 }
 
-// CreateVolume creates a JIVA volume.
-// Returns: volumeID, volumeSizeGB, labels, error
-func (jOrch *JivaOrchestrator) CreateVolume(c *jivaProvisioner) (volume.MayaVolumeID, int, map[string]string, error) {
-	orchestrator, err := c.awsElasticBlockStore.plugin.host.GetOrchProvider()
+// DeleteVolume tries to delete the Jiva volume via an orchestrator
+func (jOrch *JivaOrchestrator) DeleteVolume(d *jivaDeleter) error {
+	orchestrator, err := d.plugin.aspect.GetOrchProvider()
 	if err != nil {
-		return "", 0, nil, err
+		return err
 	}
 
-	// AWS volumes don't have Name field, store the name in Name tag
-	var tags map[string]string
-	if c.options.Tags == nil {
-		tags = make(map[string]string)
-	} else {
-		tags = *c.options.Tags
-	}
-	tags["Name"] = volume.GenerateVolumeName(c.options.ClusterName, c.options.PVName, 255) // AWS tags can have 255 characters
+	storageOrchestrator, ok := orchestrator.StoragePlacements()
 
-	capacity := c.options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
-	requestBytes := capacity.Value()
-	// Jiva works with gigabytes, convert to GiB with rounding up
-	requestGB := int(volume.RoundUpSize(requestBytes, 1024*1024*1024))
-	volumeOptions := &aws.VolumeOptions{
-		CapacityGB: requestGB,
-		Tags:       tags,
-		PVCName:    c.options.PVC.Name,
-	}
-	// Apply Parameters (case-insensitive). We leave validation of
-	// the values to the orchestrator.
-	for k, v := range c.options.Parameters {
-		switch strings.ToLower(k) {
-		case "type":
-			volumeOptions.VolumeType = v
-		case "zone":
-			volumeOptions.AvailabilityZone = v
-		case "iopspergb":
-			volumeOptions.IOPSPerGB, err = strconv.Atoi(v)
-			if err != nil {
-				return "", 0, nil, fmt.Errorf("invalid iopsPerGB value %q, must be integer between 1 and 30: %v", v, err)
-			}
-		case "encrypted":
-			volumeOptions.Encrypted, err = strconv.ParseBool(v)
-			if err != nil {
-				return "", 0, nil, fmt.Errorf("invalid encrypted boolean value %q, must be true or false: %v", v, err)
-			}
-		case "kmskeyid":
-			volumeOptions.KmsKeyId = v
-		default:
-			return "", 0, nil, fmt.Errorf("invalid option %q for volume plugin %s", k, c.plugin.GetPluginName())
-		}
+	if !ok {
+		return fmt.Errorf("Orchestrator '%s' does not provide storage services", orchestrator.Name())
 	}
 
-	name, err := orchestrator.CreateDisk(volumeOptions)
-	if err != nil {
-		glog.V(2).Infof("Error creating JIVA volume: %v", err)
-		return "", 0, nil, err
-	}
-	glog.V(2).Infof("Successfully created JIVA volume %s", name)
-
-	labels, err := orchestrator.GetVolumeLabels(name)
-	if err != nil {
-		// We don't really want to leak the volume here...
-		glog.Errorf("error building labels for new JIVA volume %q: %v", name, err)
-	}
-
-	return name, int(requestGB), labels, nil
+	return storageOrchestrator.StorageRemovalReq(d.jiva.pv)
 }

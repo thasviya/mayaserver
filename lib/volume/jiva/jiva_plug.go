@@ -3,6 +3,10 @@
 package jiva
 
 import (
+	"io"
+
+	"github.com/golang/glog"
+	"github.com/openebs/mayaserver/lib/api/v1"
 	"github.com/openebs/mayaserver/lib/volume"
 )
 
@@ -10,6 +14,21 @@ const (
 	// A well defined namespaced name given to jiva volume plugin
 	jivaVolumePluginName = "openebs.io/jiva"
 )
+
+// This is invoked at startup.
+// TODO put the exact word rather than startup !!)
+//
+// NOTE:
+//    This is a Golang feature.
+// Due care needs to be exercised to make sure dependencies are initialized &
+// hence available.
+func init() {
+	volume.RegisterVolumePlugin(
+		jivaVolumePluginName,
+		func(config io.Reader, aspect volume.VolumePluginAspect) (volume.VolumePlugin, error) {
+			return newJivaVolumePlugin(config, aspect)
+		})
+}
 
 // jivaVolumePlugin is the concrete implementation that aligns to
 // volume.VolumePlugin, volume.DeletableVolumePlugin, ProvisionableVolumePlugin
@@ -19,48 +38,47 @@ type jivaVolumePlugin struct {
 	aspect volume.VolumePluginAspect
 }
 
-// Init does the generic initialization of jivaVolumePlugin. It sets the aspect
-// of jivaVolumePlugin.
-func (plugin *jivaVolumePlugin) Init(aspect volume.VolumePluginAspect) error {
-	plugin.aspect = aspect
-	return nil
+// newJivaVolumePlugin provides a new instance of Jiva VolumePlugin.
+// This function aligns with VolumePluginFactory type.
+func newJivaVolumePlugin(config io.Reader, aspect volume.VolumePluginAspect) (*jivaVolumePlugin, error) {
+
+	glog.Infof("Building jiva volume plugin")
+
+	// TODO
+	//jCfg, err := readJivaConfig(config)
+	//if err != nil {
+	//	return nil, fmt.Errorf("unable to read Nomad orchestration provider config file: %v", err)
+	//}
+
+	// TODO
+	// validations of the populated config structure
+
+	// build the provisioner instance
+	jivaVolumePlug := &jivaVolumePlugin{
+		aspect: aspect,
+		//nConfig:    jCfg,
+	}
+
+	return jivaVolumePlug, nil
 }
 
 // GetPluginName returns the namespaced name of this plugin i.e. jivaVolumePlugin
+// This is a contract implementation of volume.VolumePlugin
 func (plugin *jivaVolumePlugin) GetPluginName() string {
 	return jivaVolumePluginName
 }
 
-// TODO
-//  Check the naming. Is this some type vs. name ?
-// GetVolumeName returns the name of the volume specified in the spec.
-func (plugin *jivaVolumePlugin) GetVolumeName(spec *volume.Spec) (string, error) {
-	volumeSource, _, err := getVolumeSource(spec)
-	if err != nil {
-		return "", err
-	}
-
-	return volumeSource.VolumeID, nil
-}
-
-// CanSupport checks whether the supplied spec belongs to here i.e. jiva volume
-// plugin
-func (plugin *jivaVolumePlugin) CanSupport(spec *volume.Spec) bool {
-	return spec.Volume != nil && spec.Volume.Jiva != nil
-}
-
 // jivaVolumePlugin provides a concrete implementation of volume.Deleter interface.
 // This deleter instance would manage the deletion of a jiva volume.
-func (plugin *jivaVolumePlugin) NewDeleter(spec *volume.Spec) (volume.Deleter, error) {
-	return plugin.newDeleterInternal(spec, &JivaOrchestrator{})
+func (plugin *jivaVolumePlugin) NewDeleter(pv *v1.PersistentVolume) (volume.Deleter, error) {
+	return plugin.newDeleterInternal(pv, &JivaOrchestrator{})
 }
 
-func (plugin *jivaVolumePlugin) newDeleterInternal(spec *volume.Spec, provider jivaProvider) (volume.Deleter, error) {
+func (plugin *jivaVolumePlugin) newDeleterInternal(pv *v1.PersistentVolume, provider jivaProvider) (volume.Deleter, error) {
 
 	return &jivaDeleter{
 		jiva: &jiva{
-			volName:  spec.Name(),
-			volumeID: spec.Volume.Jiva.VolumeID,
+			pv:       pv,
 			provider: provider,
 			plugin:   plugin,
 		}}, nil
@@ -69,18 +87,18 @@ func (plugin *jivaVolumePlugin) newDeleterInternal(spec *volume.Spec, provider j
 // jivaVolumePlugin provides a concrete implementation of volume.Provisioner
 // interface. This provisoner instance would manage the creation of a new jiva
 // volume.
-func (plugin *jivaVolumePlugin) NewProvisioner(options volume.VolumePluginOptions) (volume.Provisioner, error) {
-	return plugin.newProvisionerInternal(options, &JivaOrchestrator{})
+func (plugin *jivaVolumePlugin) NewProvisioner(pvc *v1.PersistentVolumeClaim) (volume.Provisioner, error) {
+	return plugin.newProvisionerInternal(pvc, &JivaOrchestrator{})
 }
 
-func (plugin *awsElasticBlockStorePlugin) newProvisionerInternal(options volume.VolumeOptions, provider jivaProvider) (volume.Provisioner, error) {
+func (plugin *jivaVolumePlugin) newProvisionerInternal(pvc *v1.PersistentVolumeClaim, provider jivaProvider) (volume.Provisioner, error) {
 
 	return &jivaProvisioner{
 		jiva: &jiva{
 			provider: provider,
 			plugin:   plugin,
 		},
-		options: options,
+		pvc: pvc,
 	}, nil
 }
 
@@ -88,15 +106,4 @@ func (plugin *awsElasticBlockStorePlugin) newProvisionerInternal(options volume.
 // In-fact this is true for all volume plugins.
 func ProbeVolumePlugins() []volume.VolumePlugin {
 	return []volume.VolumePlugin{&jivaVolumePlugin{nil}}
-}
-
-// TODO
-//  Check the naming !!! Is this some type vs. source ?
-func getVolumeSource(
-	spec *volume.Spec) (*v1.JivaVolumeSource, bool, error) {
-	if spec.Volume != nil && spec.Volume.Jiva != nil {
-		return spec.Volume.Jiva, spec.Volume.Jiva.ReadOnly, nil
-	}
-
-	return nil, false, fmt.Errorf("Spec does not reference any JIVA volume type")
 }

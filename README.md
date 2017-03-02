@@ -68,6 +68,6 @@ curl http://$IP:5656/latest/meta-data/instance-id
 
 ## Licensing
 
-Mayaserver is completely open source with an Apache license. Mayaserver's
+Mayaserver is completely open source and bears an Apache license. Mayaserver's
 core components and designs are a derivative of other open sourced libraries 
 like Nomad and Kubernetes.

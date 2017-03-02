@@ -1,97 +1,10 @@
 package nomad
 
-// StorageApis provides a means to communicate with Nomad Apis
-// w.r.t storage.
-//
-// NOTE:
-//    A Nomad job spec is treated as a persistent volume storage
-// spec & then submitted to a Nomad deployment.
-//
-// NOTE:
-//    Nomad has no notion of Persistent Volume.
-type StorageApis interface {
-	// Create makes a request to Nomad to create a storage resource
-	CreateStorage()
+import (
+	"fmt"
 
-	// Delete makes a request to Nomad to delete the storage resource
-	DeleteStorage()
-}
-
-// nomadStorageApi is an implementation of the nomad.StorageApis interface
-// This will make API calls to Nomad from mayaserver. In addition, it
-// understands submitting a job specs to a Nomad deployment.
-type nomadStorageApi struct {
-  nApiClient NomadClient
-}
-
-// Create & submit a job spec that creates a resource in Nomad cluster.
-//
-// NOTE:
-//    Nomad does not have persistent volume as its first class citizen.
-// Hence, this resource should exhibit storage characteristics. The validations
-// for this should have been done at the volume plugin implementation.
-func (nsApi *nomadStorageApi) CreateStorage() error {
-
-  // TODO
-  // These are lot of http API calls.
-  //
-  // Need to think better !!!
-  //  1. Do I need so many calls ?
-  //  2. Do I need to invoke Deregister on error ?  
-  //  3. What is the meaning of ForceEvaluate ? Do I need it?
-  //  4. What to do if Summary returns an in-progress state ?
-  
-  // func (j *Jobs) Info(jobID string, q *QueryOptions) (*Job, *QueryMeta, error)
-  job, qMeta, err := nsApi.Http().Jobs.Info(jobID, qOpts)
-  
-  if err != nil {
-    return err
-  }
-  
-  if job != nil {
-    // job exists already
-    // check the labels, tags, etc
-    // goto summary block
-    // or
-    // return already exists error
-  }
-  
-  // func (j *Jobs) Validate(job *Job, q *WriteOptions) (*JobValidateResponse, *WriteMeta, error)
-  jValRes, valMeta, err := nsApi.Http().Jobs.Validate(job, wOpts)
-  
-  if err != nil {
-    return err
-  }
-  
-  //func (j *Jobs) Register(job *Job, q *WriteOptions) (string, *WriteMeta, error)
-  evalID, evalMeta, err := nsApi.Http().Jobs.Register(job, wOpts)
-  
-  if err != nil {
-    return err
-  }
-  
-  // func (j *Jobs) Summary(jobID string, q *QueryOptions) (*JobSummary, *QueryMeta, error)
-  jSum, sumMeta, err := nsApi.Http().Jobs.Summary(jobID, qOpts)
-  
-  if err != nil {
-    // Check options like:
-    //  1. retry on final err,
-    //  2. deregister on final err,
-    //  3. return on final err
-    return err
-  }
-  
-  return nil
-}
-
-// Create & submit a job spec that removes a resource in Nomad cluster.
-//
-// NOTE:
-//    Nomad does not have persistent volume as its first class citizen.
-// Hence, this resource should exhibit storage characteristics. The validations
-// for this should have been done at the volume plugin implementation.
-func (nsApi *nomadStorageApi) DeleteStorage() {
-}
+	"github.com/hashicorp/nomad/api"
+)
 
 // Apis provides a means to communicate with Nomad Apis
 type Apis interface {
@@ -112,7 +25,7 @@ func newNomadApiProvider() *nomadApiProvider {
 	return &nomadApiProvider{}
 }
 
-// Provides a concrete implementation of Nomad api client that 
+// Provides a concrete implementation of Nomad api client that
 // can invoke Nomad APIs
 func (ncp *nomadApiProvider) Client() (NomadClient, error) {
 	return &nomadClientUtil{}, nil
@@ -121,6 +34,96 @@ func (ncp *nomadApiProvider) Client() (NomadClient, error) {
 // Returns an instance of StorageApis.
 func (ncp *nomadApiProvider) StorageApis(nApiClient NomadClient) (StorageApis, error) {
 	return &nomadStorageApi{
-	  nApiClient: nApiClient,
+		nApiClient: nApiClient,
 	}, nil
+}
+
+// StorageApis provides a means to communicate with Nomad Apis
+// w.r.t storage.
+//
+// NOTE:
+//    A Nomad job spec is treated as a persistent volume storage
+// spec & then submitted to a Nomad deployment.
+//
+// NOTE:
+//    Nomad has no notion of Persistent Volume.
+type StorageApis interface {
+	// Create makes a request to Nomad to create a storage resource
+	CreateStorage(job *api.Job) (*api.JobSummary, error)
+
+	// Delete makes a request to Nomad to delete the storage resource
+	DeleteStorage(job *api.Job) (string, error)
+}
+
+// nomadStorageApi is an implementation of the nomad.StorageApis interface
+// This will make API calls to Nomad from mayaserver. In addition, it
+// understands submitting a job specs to a Nomad deployment.
+type nomadStorageApi struct {
+	nApiClient NomadClient
+}
+
+// Create & submit a job spec that creates a resource in Nomad cluster.
+//
+// NOTE:
+//    Nomad does not have persistent volume as its first class citizen.
+// Hence, this resource should exhibit storage characteristics. The validations
+// for this should have been done at the volume plugin implementation.
+func (nsApi *nomadStorageApi) CreateStorage(job *api.Job) (*api.JobSummary, error) {
+
+	nApiClient := nsApi.nApiClient
+	if nApiClient == nil {
+		return nil, fmt.Errorf("nomad api client not initialized")
+	}
+
+	nApiHttpClient, err := nApiClient.Http()
+	if err != nil {
+		return nil, err
+	}
+
+	//func (j *Jobs) Register(job *Job, q *WriteOptions) (string, *WriteMeta, error)
+	//evalID, evalMeta, err := nApiHttpClient.Jobs().Register(job, &api.WriteOptions{})
+	_, _, err = nApiHttpClient.Jobs().Register(job, &api.WriteOptions{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// func (j *Jobs) Summary(jobID string, q *QueryOptions) (*JobSummary, *QueryMeta, error)
+	//jSum, sumMeta, err := nApiHttpClient.Jobs().Summary(*job.ID, &api.QueryOptions{})
+	jSum, _, err := nApiHttpClient.Jobs().Summary(*job.ID, &api.QueryOptions{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return jSum, err
+}
+
+// Create & submit a job spec that removes a resource in Nomad cluster.
+//
+// NOTE:
+//    Nomad does not have persistent volume as its first class citizen.
+// Hence, this resource should exhibit storage characteristics. The validations
+// for this should have been done at the volume plugin implementation.
+func (nsApi *nomadStorageApi) DeleteStorage(job *api.Job) (string, error) {
+
+	nApiClient := nsApi.nApiClient
+	if nApiClient == nil {
+		return "", fmt.Errorf("nomad api client not initialized")
+	}
+
+	nApiHttpClient, err := nApiClient.Http()
+	if err != nil {
+		return "", err
+	}
+
+	//func (j *Jobs) Deregister(jobID string, q *WriteOptions) (string, *WriteMeta, error)
+	//evalID, deregMeta, err := nApiHttpClient.Jobs().Deregister(*job.ID, &api.WriteOptions{})
+	evalID, _, err := nApiHttpClient.Jobs().Deregister(*job.ID, &api.WriteOptions{})
+
+	if err != nil {
+		return "", err
+	}
+
+	return evalID, nil
 }
