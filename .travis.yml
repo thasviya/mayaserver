@@ -10,8 +10,9 @@ before_install:
   - sudo apt-get install -y docker-engine liblxc1 lxc-dev lxc 
   - sudo apt-get install -y qemu
 install:
-  - make bootstrap
-script: #test need to fix before running in travis
+  - make init
+  - make
+script:
   - make bin 
   - ls -la pkg/
 deploy:
