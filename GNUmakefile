@@ -33,6 +33,7 @@ init: bootstrap deps
 deps:
 	rm -rf vendor/github.com/
 	@govendor sync
+	cp -r ./vendor/github.com/kubernetes/kubernetes/staging/src/k8s.io/ ./vendor/
 
 clean:
 	rm -rf bin
