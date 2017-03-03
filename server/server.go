@@ -36,10 +36,10 @@ func NewMayaServer(config *MayaConfig, logOutput io.Writer) (*MayaServer, error)
 		shutdownCh: make(chan struct{}),
 	}
 
-  err := ms.BootstrapPlugins()
-  if err != nil {
-    return nil, err
-  }
+	err := ms.BootstrapPlugins()
+	if err != nil {
+		return nil, err
+	}
 
 	return ms, nil
 }

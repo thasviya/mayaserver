@@ -170,13 +170,13 @@ func (c *UpCommand) setupLoggers(mconfig *server.MayaConfig) (*gatedwriter.Write
 // setupMayaServer is used to start Maya server
 func (c *UpCommand) setupMayaServer(mconfig *server.MayaConfig, logOutput io.Writer) error {
 	c.Ui.Output("Starting Maya server ...")
-	
+
 	maya, err := server.NewMayaServer(mconfig, logOutput)
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("Error starting Maya server: %s", err))
 		return err
 	}
-	
+
 	c.maya = maya
 
 	// Setup the HTTP server
@@ -186,7 +186,7 @@ func (c *UpCommand) setupMayaServer(mconfig *server.MayaConfig, logOutput io.Wri
 		c.Ui.Error(fmt.Sprintf("Error starting http server: %s", err))
 		return err
 	}
-	
+
 	c.httpServer = http
 
 	return nil
