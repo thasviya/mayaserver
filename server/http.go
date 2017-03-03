@@ -16,6 +16,8 @@ import (
 	"github.com/NYTimes/gziphandler"
 	"github.com/openebs/mayaserver/structs"
 	"github.com/ugorji/go/codec"
+
+	"github.com/openebs/mayaserver/lib/volume"
 )
 
 const (
@@ -32,7 +34,11 @@ var (
 
 // HTTPServer is used to wrap Maya server and expose it over an HTTP interface
 type HTTPServer struct {
-	maya     *MayaServer
+	// TODO
+	// Convert MayaServer as an interface with some public contracts
+	// This interface can be embedded in HTTPServer struct
+	maya *MayaServer
+
 	mux      *http.ServeMux
 	listener net.Listener
 	logger   *log.Logger
@@ -118,6 +124,12 @@ func (s *HTTPServer) registerHandlers(serviceProvider string, enableDebug bool) 
 	// NOTE - The original handler is passed as a func to the wrap method
 	s.mux.HandleFunc("/latest/meta-data/", s.wrap(s.MetaSpecificRequest))
 	s.mux.HandleFunc("/latest/volume/", s.wrap(s.VolumeSpecificRequest))
+}
+
+// GetVolumePlugin is a pass through function that provides a particular
+// volume plugin
+func (s *HTTPServer) GetVolumePlugin(name string) (volume.VolumeInterface, error) {
+	return s.maya.GetVolumePlugin(name)
 }
 
 // HTTPCodedError is used to provide the HTTP error code

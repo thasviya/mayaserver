@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"sync"
@@ -84,6 +85,20 @@ func (ms *MayaServer) BootstrapPlugins() error {
 
 	ms.volPlugins[jiva.JivaStorPluginName] = jivaStor
 	return nil
+}
+
+// GetVolumePlugin is an accessor that fetches a volume.VolumeInterface instance
+// The volume.VolumeInterface should have been initialized earlier.
+func (ms *MayaServer) GetVolumePlugin(name string) (volume.VolumeInterface, error) {
+	ms.pluginsMutex.Lock()
+	defer ms.pluginsMutex.Unlock()
+
+	storage, found := ms.volPlugins[name]
+	if !found {
+		return nil, fmt.Errorf("Volume plugin '%s' not found", name)
+	}
+
+	return storage, nil
 }
 
 // Shutdown is used to terminate MayaServer.
