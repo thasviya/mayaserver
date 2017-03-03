@@ -3,31 +3,55 @@
 package jiva
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/golang/glog"
 	"github.com/openebs/mayaserver/lib/api/v1"
+	"github.com/openebs/mayaserver/lib/orchprovider"
 	"github.com/openebs/mayaserver/lib/volume"
 )
 
 const (
 	// A well defined namespaced name given to this volume plugin implementation
-	jivaStorPluginName = "openebs.io/jiva"
+	JivaStorPluginName = "openebs.io/jiva"
 )
 
-// This is invoked at startup.
-// TODO put the exact word rather than startup !!
+// The registration logic for jiva storage volume plugin
 //
 // NOTE:
+//    This is invoked at startup.
+// TODO put the exact word rather than startup !!
 //    This is a Golang feature.
-// Due care needs to be exercised to make sure dependencies are initialized &
-// hence available.
+//
+// NOTE:
+//    Due care needs to be exercised to make sure dependencies
+// are initialized & hence available.
 func init() {
 	volume.RegisterVolumePlugin(
-		jivaStorPluginName,
+		JivaStorPluginName,
 		func(config io.Reader, aspect volume.VolumePluginAspect) (volume.VolumeInterface, error) {
 			return newJivaStor(config, aspect)
 		})
+}
+
+// JivaStorNomadAspect is a concrete implementation of VolumePluginAspect
+// This is a utility struct (publicly scoped) that can be used during jiva volume
+// plugin initialization
+type JivaStorNomadAspect struct {
+
+	// The aspect that deals with orchestration needs for jiva
+	// storage
+	Nomad orchprovider.OrchestratorInterface
+}
+
+func (jAspect *JivaStorNomadAspect) GetOrchProvider() (orchprovider.OrchestratorInterface, error) {
+
+	if jAspect.Nomad == nil {
+		return nil, fmt.Errorf("Nomad aspect is not set")
+	}
+
+	return jAspect.Nomad, nil
 }
 
 // jivaStor is the concrete implementation that implements
@@ -82,7 +106,7 @@ func newJivaStor(config io.Reader, aspect volume.VolumePluginAspect) (*jivaStor,
 // NOTE:
 //    This is a contract implementation of volume.VolumeInterface
 func (j *jivaStor) Name() string {
-	return jivaStorPluginName
+	return JivaStorPluginName
 }
 
 // jivaStor supports provisioning
