@@ -300,9 +300,13 @@ func TestConfig_Listener(t *testing.T) {
 
 func TestIsMissingPort(t *testing.T) {
 	_, _, err := net.SplitHostPort("localhost")
+
+	// The port should be missing
 	if missing := isMissingPort(err); !missing {
 		t.Errorf("expected missing port error, but got %v", err)
 	}
+
+	// The port should not be missing
 	_, _, err = net.SplitHostPort("localhost:9000")
 	if missing := isMissingPort(err); missing {
 		t.Errorf("expected no error, but got %v", err)
