@@ -151,7 +151,7 @@ func (c *UpCommand) setupLoggers(mconfig *server.MayaConfig) (*gatedwriter.Write
 			c.Ui.Error(fmt.Sprintf("Syslog setup failed: %v", err))
 			return nil, nil, nil
 		}
-		syslog = &server.SyslogWrapper{l, c.logFilter}
+		syslog = &server.SyslogWriter{l, c.logFilter}
 	}
 
 	// Create a log writer, and wrap a logOutput around it
@@ -365,7 +365,6 @@ func (c *UpCommand) Help() string {
 Usage: mayaserver up [options]
 
   Starts Maya server and runs until an interrupt is received.
-  The agent may be a client and/or server.
 
   The Maya server's configuration primarily comes from the config
   files used, but a subset of the options may also be passed directly

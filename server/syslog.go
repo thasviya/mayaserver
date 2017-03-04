@@ -1,6 +1,5 @@
 package server
 
-// This is an adaptation of Hashicorp's Nomad library
 import (
 	"bytes"
 	"github.com/hashicorp/go-syslog"
@@ -18,22 +17,23 @@ var levelPriority = map[string]gsyslog.Priority{
 	"CRIT":  gsyslog.LOG_CRIT,
 }
 
-// SyslogWrapper is used to cleaup log messages before
-// writing them to a Syslogger. Implements the io.Writer
-// interface.
-type SyslogWrapper struct {
-	L    gsyslog.Syslogger
-	Filt *logutils.LevelFilter
+// SyslogWriter is used to cleaup log messages before
+// writing them to a Syslogger.
+//
+// Implements the io.Writer interface.
+type SyslogWriter struct {
+	GSyslog gsyslog.Syslogger
+	LFilter *logutils.LevelFilter
 }
 
 // Write is used to implement io.Writer
-func (s *SyslogWrapper) Write(p []byte) (int, error) {
+func (s *SyslogWriter) Write(p []byte) (int, error) {
 	// Skip syslog if the log level doesn't apply
-	if !s.Filt.Check(p) {
+	if !s.LFilter.Check(p) {
 		return 0, nil
 	}
 
-	// Extract log level
+	// Segregate log level from actual log message
 	var level string
 	afterLevel := p
 	x := bytes.IndexByte(p, '[')
@@ -52,6 +52,6 @@ func (s *SyslogWrapper) Write(p []byte) (int, error) {
 	}
 
 	// Attempt the write
-	err := s.L.WriteLevel(priority, afterLevel)
+	err := s.GSyslog.WriteLevel(priority, afterLevel)
 	return len(p), err
 }

@@ -25,7 +25,7 @@ func TestSyslogFilter(t *testing.T) {
 	filt := LevelFilter()
 	filt.MinLevel = logutils.LogLevel("INFO")
 
-	s := &SyslogWrapper{l, filt}
+	s := &SyslogWriter{l, filt}
 	n, err := s.Write([]byte("[INFO] test"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
