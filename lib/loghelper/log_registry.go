@@ -1,4 +1,4 @@
-package server
+package loghelper
 
 // This is an adaptation of Hashicorp's Nomad library
 import (
@@ -11,38 +11,49 @@ type LogHandler interface {
 	HandleLog(string)
 }
 
-// LogWriter implements io.Writer so it can be used as a log sink.
+// LogRegistrar can be used as a log sink.
 // It maintains a circular buffer of logs, and a set of handlers to
 // which it can stream the logs to.
-type LogWriter struct {
+//
+// LogRegistrar implements:
+//  1. io.Writer interface
+// LogRegistrar composes:
+//  1. LogHandler interface
+type LogRegistrar struct {
+	// embedded mutex
 	sync.Mutex
-	logs     []string
-	index    int
-	handlers map[LogHandler]struct{}
+
+	// logs holds names of log handlers
+	logs []string
+
+	index int
+
+	// registry of handlers
+	registry map[LogHandler]struct{}
 }
 
-// NewLogWriter creates a logWriter with the given buffer capacity
-func NewLogWriter(buf int) *LogWriter {
-	return &LogWriter{
+// NewLogRegistrar creates a LogRegistrar with the given buffer capacity
+func NewLogRegistrar(buf int) *LogRegistrar {
+	return &LogRegistrar{
 		logs:     make([]string, buf),
 		index:    0,
-		handlers: make(map[LogHandler]struct{}),
+		registry: make(map[LogHandler]struct{}),
 	}
 }
 
 // RegisterHandler adds a log handler to receive logs, and sends
 // the last buffered logs to the handler
-func (l *LogWriter) RegisterHandler(lh LogHandler) {
+func (l *LogRegistrar) RegisterHandler(lh LogHandler) {
 	l.Lock()
 	defer l.Unlock()
 
 	// Do nothing if already registered
-	if _, ok := l.handlers[lh]; ok {
+	if _, ok := l.registry[lh]; ok {
 		return
 	}
 
 	// Register
-	l.handlers[lh] = struct{}{}
+	l.registry[lh] = struct{}{}
 
 	// Send the old logs
 	if l.logs[l.index] != "" {
@@ -56,14 +67,14 @@ func (l *LogWriter) RegisterHandler(lh LogHandler) {
 }
 
 // DeregisterHandler removes a LogHandler and prevents more invocations
-func (l *LogWriter) DeregisterHandler(lh LogHandler) {
+func (l *LogRegistrar) DeregisterHandler(lh LogHandler) {
 	l.Lock()
 	defer l.Unlock()
-	delete(l.handlers, lh)
+	delete(l.registry, lh)
 }
 
 // Write is used to accumulate new logs
-func (l *LogWriter) Write(p []byte) (n int, err error) {
+func (l *LogRegistrar) Write(p []byte) (n int, err error) {
 	l.Lock()
 	defer l.Unlock()
 
@@ -77,7 +88,7 @@ func (l *LogWriter) Write(p []byte) (n int, err error) {
 	l.logs[l.index] = string(p)
 	l.index = (l.index + 1) % len(l.logs)
 
-	for lh, _ := range l.handlers {
+	for lh, _ := range l.registry {
 		lh.HandleLog(string(p))
 	}
 	return

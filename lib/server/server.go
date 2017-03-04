@@ -6,6 +6,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/openebs/mayaserver/lib/config"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	"github.com/openebs/mayaserver/lib/orchprovider/nomad"
 	"github.com/openebs/mayaserver/lib/volume"
@@ -15,7 +16,7 @@ import (
 // MayaServer is a long running stateless daemon that runs
 // at openebs maya master(s)
 type MayaServer struct {
-	config       *MayaConfig
+	config       *config.MayaConfig
 	pluginsMutex sync.Mutex
 	volPlugins   map[string]volume.VolumeInterface
 	logger       *log.Logger
@@ -28,7 +29,7 @@ type MayaServer struct {
 
 // NewMayaServer is used to create a new maya server
 // with the given configuration
-func NewMayaServer(config *MayaConfig, logOutput io.Writer) (*MayaServer, error) {
+func NewMayaServer(config *config.MayaConfig, logOutput io.Writer) (*MayaServer, error) {
 	ms := &MayaServer{
 		config:     config,
 		volPlugins: make(map[string]volume.VolumeInterface),

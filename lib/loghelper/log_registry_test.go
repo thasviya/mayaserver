@@ -1,4 +1,4 @@
-package server
+package loghelper
 
 import (
 	"testing"
@@ -12,9 +12,9 @@ func (m *MockLogHandler) HandleLog(l string) {
 	m.logs = append(m.logs, l)
 }
 
-func TestLogWriter(t *testing.T) {
+func TestLogRegistrar(t *testing.T) {
 	h := &MockLogHandler{}
-	w := NewLogWriter(4)
+	w := NewLogRegistrar(4)
 
 	// Write some logs
 	w.Write([]byte("one")) // Gets dropped!

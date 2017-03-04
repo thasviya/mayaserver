@@ -15,13 +15,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/openebs/mayaserver/lib/config"
 	"github.com/openebs/mayaserver/lib/server"
 
 	"github.com/hashicorp/go-syslog"
 	"github.com/hashicorp/logutils"
 	"github.com/mitchellh/cli"
 	"github.com/openebs/mayaserver/lib/flaghelper"
-	"github.com/openebs/mayaserver/lib/gatedwriter"
+	"github.com/openebs/mayaserver/lib/loghelper"
 )
 
 // gracefulTimeout controls how long we wait before forcefully terminating
@@ -45,12 +46,12 @@ type UpCommand struct {
 	logOutput  io.Writer
 }
 
-func (c *UpCommand) readMayaConfig() *server.MayaConfig {
+func (c *UpCommand) readMayaConfig() *config.MayaConfig {
 	var configPath []string
 
 	// Make a new, empty config.
-	cmdConfig := &server.MayaConfig{
-		Ports: &server.Ports{},
+	cmdConfig := &config.MayaConfig{
+		Ports: &config.Ports{},
 	}
 
 	flags := flag.NewFlagSet("up", flag.ContinueOnError)
@@ -69,10 +70,10 @@ func (c *UpCommand) readMayaConfig() *server.MayaConfig {
 	}
 
 	// Load the configuration
-	mconfig := server.DefaultMayaConfig()
+	mconfig := config.DefaultMayaConfig()
 
 	for _, path := range configPath {
-		current, err := server.LoadMayaConfig(path)
+		current, err := config.LoadMayaConfig(path)
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf(
 				"Error loading configuration from %s: %s", path, err))
@@ -81,7 +82,7 @@ func (c *UpCommand) readMayaConfig() *server.MayaConfig {
 
 		// The user asked us to load some config here but we didn't find any,
 		// so we'll complain but continue.
-		if current == nil || reflect.DeepEqual(current, &server.MayaConfig{}) {
+		if current == nil || reflect.DeepEqual(current, &config.MayaConfig{}) {
 			c.Ui.Warn(fmt.Sprintf("No configuration loaded from %s", path))
 		}
 
@@ -125,18 +126,18 @@ func (c *UpCommand) readMayaConfig() *server.MayaConfig {
 }
 
 // setupLoggers is used to setup the logGate, logWriter, and our logOutput
-func (c *UpCommand) setupLoggers(mconfig *server.MayaConfig) (*gatedwriter.Writer, *server.LogWriter, io.Writer) {
+func (c *UpCommand) setupLoggers(mconfig *config.MayaConfig) (*loghelper.Writer, *loghelper.LogRegistrar, io.Writer) {
 	// Setup logging. First create the gated log writer, which will
 	// store logs until we're ready to show them. Then create the level
 	// filter, filtering logs of the specified level.
-	logGate := &gatedwriter.Writer{
+	logGate := &loghelper.Writer{
 		Writer: &cli.UiWriter{Ui: c.Ui},
 	}
 
-	c.logFilter = server.LevelFilter()
+	c.logFilter = loghelper.LevelFilter()
 	c.logFilter.MinLevel = logutils.LogLevel(strings.ToUpper(mconfig.LogLevel))
 	c.logFilter.Writer = logGate
-	if !server.ValidateLevelFilter(c.logFilter.MinLevel, c.logFilter) {
+	if !loghelper.ValidateLevelFilter(c.logFilter.MinLevel, c.logFilter) {
 		c.Ui.Error(fmt.Sprintf(
 			"Invalid log level: %s. Valid log levels are: %v",
 			c.logFilter.MinLevel, c.logFilter.Levels))
@@ -151,11 +152,11 @@ func (c *UpCommand) setupLoggers(mconfig *server.MayaConfig) (*gatedwriter.Write
 			c.Ui.Error(fmt.Sprintf("Syslog setup failed: %v", err))
 			return nil, nil, nil
 		}
-		syslog = &server.SyslogWriter{l, c.logFilter}
+		syslog = &loghelper.SyslogWriter{l, c.logFilter}
 	}
 
 	// Create a log writer, and wrap a logOutput around it
-	logWriter := server.NewLogWriter(512)
+	logWriter := loghelper.NewLogRegistrar(512)
 	var logOutput io.Writer
 	if syslog != nil {
 		logOutput = io.MultiWriter(c.logFilter, logWriter, syslog)
@@ -168,7 +169,7 @@ func (c *UpCommand) setupLoggers(mconfig *server.MayaConfig) (*gatedwriter.Write
 }
 
 // setupMayaServer is used to start Maya server
-func (c *UpCommand) setupMayaServer(mconfig *server.MayaConfig, logOutput io.Writer) error {
+func (c *UpCommand) setupMayaServer(mconfig *config.MayaConfig, logOutput io.Writer) error {
 	c.Ui.Output("Starting Maya server ...")
 
 	maya, err := server.NewMayaServer(mconfig, logOutput)
@@ -269,7 +270,7 @@ func (c *UpCommand) Run(args []string) int {
 }
 
 // handleSignals blocks until we get an exit-causing signal
-func (c *UpCommand) handleSignals(mconfig *server.MayaConfig) int {
+func (c *UpCommand) handleSignals(mconfig *config.MayaConfig) int {
 	signalCh := make(chan os.Signal, 4)
 	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGPIPE)
 
@@ -333,7 +334,7 @@ WAIT:
 }
 
 // handleReload is invoked when we should reload our configs, e.g. SIGHUP
-func (c *UpCommand) handleReload(mconfig *server.MayaConfig) *server.MayaConfig {
+func (c *UpCommand) handleReload(mconfig *config.MayaConfig) *config.MayaConfig {
 	c.Ui.Output("Reloading Maya server configuration...")
 	newConf := c.readMayaConfig()
 	if newConf == nil {
@@ -343,7 +344,7 @@ func (c *UpCommand) handleReload(mconfig *server.MayaConfig) *server.MayaConfig 
 
 	// Change the log level
 	minLevel := logutils.LogLevel(strings.ToUpper(newConf.LogLevel))
-	if server.ValidateLevelFilter(minLevel, c.logFilter) {
+	if loghelper.ValidateLevelFilter(minLevel, c.logFilter) {
 		c.logFilter.SetMinLevel(minLevel)
 	} else {
 		c.Ui.Error(fmt.Sprintf(

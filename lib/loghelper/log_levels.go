@@ -1,4 +1,4 @@
-package server
+package loghelper
 
 // This is an adaptation of Hashicorp's Nomad library
 import (

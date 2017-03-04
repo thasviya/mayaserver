@@ -1,4 +1,4 @@
-package server
+package config
 
 import (
 	"fmt"
@@ -50,8 +50,8 @@ type MayaConfig struct {
 	// Use normalizedAddrs if you need the host+port to bind to.
 	Addresses *Addresses `mapstructure:"addresses"`
 
-	// normalizedAddr is set to the Address+Port by normalizeAddrs()
-	normalizedAddrs *Addresses
+	// NormalizedAddr is set to the Address+Port by normalizeAddrs()
+	NormalizedAddrs *Addresses
 
 	// AdvertiseAddrs is used to control the addresses we advertise.
 	AdvertiseAddrs *AdvertiseAddrs `mapstructure:"advertise"`
@@ -224,7 +224,7 @@ func (mc *MayaConfig) Merge(b *MayaConfig) *MayaConfig {
 // initialized and have sane defaults.
 func (mc *MayaConfig) NormalizeAddrs() error {
 	mc.Addresses.HTTP = normalizeBind(mc.Addresses.HTTP, mc.BindAddr)
-	mc.normalizedAddrs = &Addresses{
+	mc.NormalizedAddrs = &Addresses{
 		HTTP: net.JoinHostPort(mc.Addresses.HTTP, strconv.Itoa(mc.Ports.HTTP)),
 	}
 

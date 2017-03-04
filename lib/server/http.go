@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/NYTimes/gziphandler"
+	"github.com/openebs/mayaserver/lib/config"
 	"github.com/openebs/mayaserver/structs"
 	"github.com/ugorji/go/codec"
 
@@ -46,9 +47,9 @@ type HTTPServer struct {
 }
 
 // NewHTTPServer starts new HTTP server over Maya server
-func NewHTTPServer(maya *MayaServer, config *MayaConfig, logOutput io.Writer) (*HTTPServer, error) {
+func NewHTTPServer(maya *MayaServer, config *config.MayaConfig, logOutput io.Writer) (*HTTPServer, error) {
 	// Start the listener
-	lnAddr, err := net.ResolveTCPAddr("tcp", config.normalizedAddrs.HTTP)
+	lnAddr, err := net.ResolveTCPAddr("tcp", config.NormalizedAddrs.HTTP)
 	if err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package gatedwriter
+package loghelper
 
 import (
 	"bytes"

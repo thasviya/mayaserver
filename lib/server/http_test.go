@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openebs/mayaserver/lib/config"
 	"github.com/openebs/mayaserver/structs"
 	"github.com/ugorji/go/codec"
 )
@@ -31,19 +32,19 @@ func (s *TestServer) Cleanup() {
 }
 
 // makeHTTPTestServer returns a test server with full logging.
-func makeHTTPTestServer(t testing.TB, fnmc func(mc *MayaConfig)) *TestServer {
+func makeHTTPTestServer(t testing.TB, fnmc func(mc *config.MayaConfig)) *TestServer {
 	return makeHTTPTestServerWithWriter(t, nil, fnmc)
 }
 
 // makeHTTPTestServerNoLogs returns a test server which only prints maya logs and
 // no http server logs
-func makeHTTPTestServerNoLogs(t testing.TB, fnmc func(mc *MayaConfig)) *TestServer {
+func makeHTTPTestServerNoLogs(t testing.TB, fnmc func(mc *config.MayaConfig)) *TestServer {
 	return makeHTTPTestServerWithWriter(t, ioutil.Discard, fnmc)
 }
 
 // makeHTTPTestServerWithWriter returns a test server whose logs will be written to
 // the passed writer. If the writer is nil, the logs are written to stderr.
-func makeHTTPTestServerWithWriter(t testing.TB, w io.Writer, fnmc func(mc *MayaConfig)) *TestServer {
+func makeHTTPTestServerWithWriter(t testing.TB, w io.Writer, fnmc func(mc *config.MayaConfig)) *TestServer {
 	dir, maya := makeMayaServer(t, fnmc)
 	if w == nil {
 		w = maya.logOutput
@@ -62,7 +63,7 @@ func makeHTTPTestServerWithWriter(t testing.TB, w io.Writer, fnmc func(mc *MayaC
 }
 
 func BenchmarkHTTPRequests(b *testing.B) {
-	s := makeHTTPTestServerNoLogs(b, func(mc *MayaConfig) {
+	s := makeHTTPTestServerNoLogs(b, func(mc *config.MayaConfig) {
 
 	})
 	defer s.Cleanup()
@@ -409,7 +410,7 @@ func getIndex(t *testing.T, resp *httptest.ResponseRecorder) uint64 {
 	return uint64(val)
 }
 
-func httpTest(t testing.TB, fnmc func(mc *MayaConfig), f func(srv *TestServer)) {
+func httpTest(t testing.TB, fnmc func(mc *config.MayaConfig), f func(srv *TestServer)) {
 	s := makeHTTPTestServer(t, fnmc)
 	defer s.Cleanup()
 	f(s)

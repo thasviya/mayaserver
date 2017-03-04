@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"testing"
+
+	"github.com/openebs/mayaserver/lib/config"
 )
 
 func getPort() int {
@@ -30,18 +32,18 @@ func tmpDir(t testing.TB) string {
 	return dir
 }
 
-func makeMayaServer(t testing.TB, fnmc func(*MayaConfig)) (string, *MayaServer) {
+func makeMayaServer(t testing.TB, fnmc func(*config.MayaConfig)) (string, *MayaServer) {
 	dir := tmpDir(t)
 
 	// Customize the server configuration
-	conf := DefaultMayaConfig()
+	conf := config.DefaultMayaConfig()
 
 	// Set the data_dir
 	conf.DataDir = dir
 
 	// Bind and set ports
 	conf.BindAddr = "127.0.0.1"
-	conf.Ports = &Ports{
+	conf.Ports = &config.Ports{
 		HTTP: getPort(),
 	}
 	conf.NodeName = fmt.Sprintf("Node %d", conf.Ports.HTTP)
@@ -62,7 +64,7 @@ func makeMayaServer(t testing.TB, fnmc func(*MayaConfig)) (string, *MayaServer) 
 }
 
 func TestMayaServerConfig(t *testing.T) {
-	conf := DefaultMayaConfig()
+	conf := config.DefaultMayaConfig()
 
 	conf.AdvertiseAddrs.HTTP = "10.10.11.1:4006"
 
@@ -97,7 +99,7 @@ func TestMayaServerConfig(t *testing.T) {
 		t.Fatalf("expect HTTP addr 127.0.0.2, got: %s", addr)
 	}
 
-	if addr := conf.normalizedAddrs.HTTP; addr != "127.0.0.2:4005" {
+	if addr := conf.NormalizedAddrs.HTTP; addr != "127.0.0.2:4005" {
 		t.Fatalf("expect 127.0.0.2:4005, got: %s", addr)
 	}
 
@@ -116,7 +118,7 @@ func TestMayaServerConfig(t *testing.T) {
 	if addr := conf.Addresses.HTTP; addr != "127.0.0.3" {
 		t.Fatalf("expect 127.0.0.3, got: %s", addr)
 	}
-	if addr := conf.normalizedAddrs.HTTP; addr != "127.0.0.3:6666" {
+	if addr := conf.NormalizedAddrs.HTTP; addr != "127.0.0.3:6666" {
 		t.Fatalf("expect 127.0.0.3:6666, got: %s", addr)
 	}
 
