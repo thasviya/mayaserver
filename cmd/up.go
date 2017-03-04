@@ -20,8 +20,8 @@ import (
 	"github.com/hashicorp/go-syslog"
 	"github.com/hashicorp/logutils"
 	"github.com/mitchellh/cli"
-	"github.com/openebs/mayaserver/util/flag-helpers"
-	"github.com/openebs/mayaserver/util/gated-writer"
+	"github.com/openebs/mayaserver/lib/flaghelper"
+	"github.com/openebs/mayaserver/lib/gatedwriter"
 )
 
 // gracefulTimeout controls how long we wait before forcefully terminating
