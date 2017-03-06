@@ -40,9 +40,12 @@ mentioned features, the WIP tag will be removed.
 - Check if mayaserver is running ?
   - Watch out for the process with 5656 as the port
   - `5656` is the default tcp port on which mayaserver's services are exposed
+- Verify the NOMAD_ADDR env variable
+  - echo $NOMAD_ADDR
+
 
 ```bash
-# use netstat command
+# Use netstat command
 $ netstat -tnlp
 
 (Not all processes could be identified, non-owned process info
@@ -53,7 +56,7 @@ tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      
 tcp        0      0 127.0.0.1:5656          0.0.0.0:*               LISTEN      -
 tcp6       0      0 :::22                   :::*                    LISTEN      -
 
-# sudo will display the PID details
+# Using sudo will display the PID details
 $ sudo netstat -tnlp
 
 Active Internet connections (only servers)
@@ -62,7 +65,13 @@ tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      
 tcp        0      0 127.0.0.1:5656          0.0.0.0:*               LISTEN      3078/mayaserver 
 tcp6       0      0 :::22                   :::*                    LISTEN      1258/sshd
 
-# use curl to check the services
+# Check if mayaserver machine points to appropriate Nomad installation
+echo $NOMAD_ADDR
+
+# e.g.
+export NOMAD_ADDR=http://10.0.2.15:4646
+
+# Use curl to check the services
 
 - Metadata
   - curl http://$IP:5656/latest/meta-data/instance-id

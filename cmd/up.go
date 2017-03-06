@@ -340,8 +340,14 @@ WAIT:
 }
 
 // handleReload is invoked when we should reload our configs, e.g. SIGHUP
+// TODO
+// The current reload code is very basic.
+// Add ways to reload the orchestrator & plugins without shuting down the
+// process
 func (c *UpCommand) handleReload(mconfig *config.MayaConfig) *config.MayaConfig {
+
 	c.Ui.Output("Reloading Maya server configuration...")
+
 	newConf := c.readMayaConfig()
 	if newConf == nil {
 		c.Ui.Error(fmt.Sprintf("Failed to reload config"))
@@ -360,6 +366,7 @@ func (c *UpCommand) handleReload(mconfig *config.MayaConfig) *config.MayaConfig 
 		// Keep the current log level
 		newConf.LogLevel = mconfig.LogLevel
 	}
+
 	return newConf
 }
 

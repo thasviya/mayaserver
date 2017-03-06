@@ -60,11 +60,26 @@ func (m *nomadClientUtil) Http() (*api.Client, error) {
 	apiCConf := api.DefaultConfig()
 
 	// Set from environment variable
-	if v := os.Getenv(EnvNomadAddress); v != "" {
-		apiCConf.Address = v
+	val, found := os.LookupEnv(EnvNomadAddress)
+
+	if !found {
+		// TODO
+		// Set this under verbose logging
+		glog.Infof("Env variable '%s' is not set", EnvNomadAddress)
 	}
+
+	if val != "" {
+		// TODO
+		// Set this under verbose logging
+		glog.Infof("Nomad address is set to '%s' via env var", val)
+		apiCConf.Address = val
+	}
+
 	// Override from conf structure
 	if m.nomadConf != nil && m.nomadConf.Address != "" {
+		// TODO
+		// Set this under verbose logging
+		glog.Infof("Nomad address is reset to: '%s' via conf", m.nomadConf.Address)
 		apiCConf.Address = m.nomadConf.Address
 	}
 
@@ -72,7 +87,7 @@ func (m *nomadClientUtil) Http() (*api.Client, error) {
 		return nil, fmt.Errorf("Nomad address is not set")
 	}
 
-	glog.Infof("Nomad will be communicated at address: '%s'", apiCConf.Address)
+	glog.Infof("Nomad will be reached at: '%s'", apiCConf.Address)
 
 	if v := os.Getenv(EnvNomadRegion); v != "" {
 		apiCConf.Region = v
