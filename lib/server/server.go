@@ -121,6 +121,9 @@ func (ms *MayaServer) Shutdown() error {
 
 // Leave is used gracefully exit.
 func (ms *MayaServer) Leave() error {
+
+	ms.logger.Println("[INFO] mayaserver: exiting gracefully")
+
 	// Nothing as of now
 	return nil
 }

@@ -39,7 +39,12 @@ type UpCommand struct {
 	Ui                cli.Ui
 	ShutdownCh        <-chan struct{}
 
-	args       []string
+	args []string
+
+	// TODO
+	// Check if both maya & httpServer instances are required ?
+	// Can httpServer or maya embed one of the other ?
+	// Need to take care of shuting down & graceful exit scenarios !!
 	maya       *server.MayaServer
 	httpServer *server.HTTPServer
 	logFilter  *logutils.LevelFilter
@@ -172,6 +177,7 @@ func (c *UpCommand) setupLoggers(mconfig *config.MayaConfig) (*loghelper.Writer,
 func (c *UpCommand) setupMayaServer(mconfig *config.MayaConfig, logOutput io.Writer) error {
 	c.Ui.Output("Starting Maya server ...")
 
+	// Setup maya service i.e. mayaserver
 	maya, err := server.NewMayaServer(mconfig, logOutput)
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("Error starting Maya server: %s", err))

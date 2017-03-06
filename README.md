@@ -63,7 +63,11 @@ tcp        0      0 127.0.0.1:5656          0.0.0.0:*               LISTEN      
 tcp6       0      0 :::22                   :::*                    LISTEN      1258/sshd
 
 # use curl to check the services
-curl http://$IP:5656/latest/meta-data/instance-id
+
+- Metadata
+  - curl http://$IP:5656/latest/meta-data/instance-id
+- Volume
+  - curl http://172.28.128.4:5656/latest/volume/provision
 ```
 
 ## Licensing

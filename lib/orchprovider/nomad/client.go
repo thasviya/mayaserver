@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/golang/glog"
 	"github.com/hashicorp/nomad/api"
 	gcfg "gopkg.in/gcfg.v1"
 )
@@ -70,6 +71,8 @@ func (m *nomadClientUtil) Http() (*api.Client, error) {
 	if apiCConf.Address == "" {
 		return nil, fmt.Errorf("Nomad address is not set")
 	}
+
+	glog.Infof("Nomad will be communicated at address: '%s'", apiCConf.Address)
 
 	if v := os.Getenv(EnvNomadRegion); v != "" {
 		apiCConf.Region = v

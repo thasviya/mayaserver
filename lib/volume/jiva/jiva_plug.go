@@ -164,7 +164,7 @@ func (j *jivaStor) Delete(pv *v1.PersistentVolume) error {
 		return err
 	}
 
-	glog.V(2).Infof("Successfully deleted jiva volume '%s' '%s'", pv.Name, pv.UID)
+	glog.Infof("Successfully deleted jiva volume '%s' '%s'", pv.Name, pv.UID)
 
 	return nil
 
