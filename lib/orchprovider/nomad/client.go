@@ -1,6 +1,7 @@
 package nomad
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -62,15 +63,22 @@ func (m *nomadClientUtil) Http() (*api.Client, error) {
 		apiCConf.Address = v
 	}
 	// Override from conf structure
-	if m.nomadConf.Address != "" {
+	if m.nomadConf != nil && m.nomadConf.Address != "" {
 		apiCConf.Address = m.nomadConf.Address
 	}
+
+	if apiCConf.Address == "" {
+		return nil, fmt.Errorf("Nomad address is not set")
+	}
+
 	if v := os.Getenv(EnvNomadRegion); v != "" {
 		apiCConf.Region = v
 	}
+
 	if m.region != "" {
 		apiCConf.Region = m.region
 	}
+
 	// If we need custom TLS configuration, then set it
 	if m.caCert != "" || m.caPath != "" || m.clientCert != "" || m.clientKey != "" || m.insecure {
 		t := &api.TLSConfig{

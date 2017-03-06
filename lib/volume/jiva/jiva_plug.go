@@ -140,8 +140,6 @@ func (j *jivaStor) Provision(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolum
 	pv, err := j.jivaOps.Provision(pvc)
 
 	if err != nil {
-		// How to use Errorf ?
-		glog.V(2).Infof("Error creating jiva volume '%s' '%s': %v", pv.Name, pv.UID, err)
 		return nil, err
 	}
 
@@ -163,8 +161,6 @@ func (j *jivaStor) Delete(pv *v1.PersistentVolume) error {
 	err := j.jivaOps.Delete(pv)
 
 	if err != nil {
-		// Errorf ?
-		glog.V(2).Infof("Error deleting jiva volume '%s' '%s': %v", pv.Name, pv.UID, err)
 		return err
 	}
 
