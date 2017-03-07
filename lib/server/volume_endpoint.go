@@ -11,8 +11,9 @@ import (
 
 // VolumeSpecificRequest is a http handler implementation.
 // The URL path is parsed to match specific implementations.
+//
 // TODO
-//    Should it return specific types ?
+//    Should it return specific types than interface{} ?
 func (s *HTTPServer) VolumeSpecificRequest(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
 
 	path := strings.TrimPrefix(req.URL.Path, "/latest/volume")
@@ -24,12 +25,12 @@ func (s *HTTPServer) VolumeSpecificRequest(resp http.ResponseWriter, req *http.R
 
 	switch {
 
-	case strings.HasSuffix(path, "/provision"):
-		volName := strings.TrimSuffix(path, "/provision")
+	case strings.Contains(path, "/provision/"):
+		volName := strings.TrimPrefix(path, "/provision/")
 		return s.volumeProvision(resp, req, volName)
 
-	case strings.HasSuffix(path, "/delete"):
-		volName := strings.TrimSuffix(path, "/delete")
+	case strings.Contains(path, "/delete/"):
+		volName := strings.TrimPrefix(path, "/delete/")
 		return s.volumeDelete(resp, req, volName)
 
 	default:
@@ -38,6 +39,10 @@ func (s *HTTPServer) VolumeSpecificRequest(resp http.ResponseWriter, req *http.R
 }
 
 func (s *HTTPServer) volumeProvision(resp http.ResponseWriter, req *http.Request, volName string) (interface{}, error) {
+
+	if volName == "" {
+		return nil, fmt.Errorf("Volume name missing for provisioning")
+	}
 
 	// TODO
 	// Get the type of volume plugin from:
@@ -53,12 +58,21 @@ func (s *HTTPServer) volumeProvision(resp http.ResponseWriter, req *http.Request
 	// Get jiva volume provisioner
 	jivaProv, ok := jivaStor.Provisioner()
 	if !ok {
-		return nil, fmt.Errorf("Provisioning volume is not supported by '%s'", volPlugName)
+		return nil, fmt.Errorf("Volume provisioning not supported by '%s'", volPlugName)
 	}
 
 	// Provision a jiva volume
 	pvc := &v1.PersistentVolumeClaim{}
 	pvc.Name = volName
+
+	// TODO
+	// This should be set from http query parameters if present
+	// The datacenter property should accept multiple values
+	// A region can consist of multiple datacenters otherwise known as zones
+	pvc.Labels = map[string]string{
+		"region":     "default",
+		"datacenter": "dc1",
+	}
 
 	pv, err := jivaProv.Provision(pvc)
 
@@ -70,6 +84,10 @@ func (s *HTTPServer) volumeProvision(resp http.ResponseWriter, req *http.Request
 }
 
 func (s *HTTPServer) volumeDelete(resp http.ResponseWriter, req *http.Request, volName string) (interface{}, error) {
+
+	if volName == "" {
+		return nil, fmt.Errorf("Volume name missing for deletion")
+	}
 
 	// TODO
 	// Get the type of volume plugin from:

@@ -37,47 +37,57 @@ mentioned features, the WIP tag will be removed.
 
 ## Troubleshoot
 
-- Check if mayaserver is running ?
-  - Watch out for the process with 5656 as the port
-  - `5656` is the default tcp port on which mayaserver's services are exposed
-- Verify the NOMAD_ADDR env variable
-  - echo $NOMAD_ADDR
+- Verify the presence of Mayaserver binary
+  - which mayaserver
+  - mayaserver -version
 
+- Verify the presence of Mayaserver's orchestrator's .INI file(s)
+  - i.e. /etc/mayaserver/orchprovider/nomad_global.INI
+  - `global` is the name of the region
 
-```bash
-# Use netstat command
-$ netstat -tnlp
+- Verify the contents of Mayaserver's orchestrator's .INI file
+  - Below is a sample .INI file that is valid for Nomad as mayaserver's orchestrator
 
-(Not all processes could be identified, non-owned process info
- will not be shown, you would have to be root to see it all.)
-Active Internet connections (only servers)
-Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
-tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -
-tcp        0      0 127.0.0.1:5656          0.0.0.0:*               LISTEN      -
-tcp6       0      0 :::22                   :::*                    LISTEN      -
+    ```ini
+    [datacenter "dc1"]
+    address = http://172.28.128.3:4646
 
-# Using sudo will display the PID details
-$ sudo netstat -tnlp
+    [datacenter "dc2"]
+    address = http://20.0.0.2:4646
+    ```
 
-Active Internet connections (only servers)
-Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
-tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      1258/sshd
-tcp        0      0 127.0.0.1:5656          0.0.0.0:*               LISTEN      3078/mayaserver 
-tcp6       0      0 :::22                   :::*                    LISTEN      1258/sshd
+- Verify if Mayaserver is running as a process
+    - Watch out for the process with 5656 as the port
+    - `5656` is the default tcp port on which Mayaserver's services are exposed
 
-# Check if mayaserver machine points to appropriate Nomad installation
-echo $NOMAD_ADDR
+  ```bash
+  # Use netstat command
+  $ netstat -tnlp
 
-# e.g.
-export NOMAD_ADDR=http://10.0.2.15:4646
+  (Not all processes could be identified, non-owned process info
+   will not be shown, you would have to be root to see it all.)
+  Active Internet connections (only servers)
+  Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+  tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -
+  tcp        0      0 127.0.0.1:5656          0.0.0.0:*               LISTEN      -
+  tcp6       0      0 :::22                   :::*                    LISTEN      -
 
-# Use curl to check the services
+  # Using sudo will display the PID details
+  $ sudo netstat -tnlp
 
-- Metadata
-  - curl http://$IP:5656/latest/meta-data/instance-id
-- Volume
-  - curl http://172.28.128.4:5656/latest/volume/provision
-```
+  Active Internet connections (only servers)
+  Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+  tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      1258/sshd
+  tcp        0      0 127.0.0.1:5656          0.0.0.0:*               LISTEN      3078/mayaserver 
+  tcp6       0      0 :::22                   :::*                    LISTEN      1258/sshd
+  ```
+
+- Verify if mayaserver's services are responding
+  - Metadata
+    - curl http://$IP:5656/latest/meta-data/instance-id
+  - Volume
+    - curl http://172.28.128.4:5656/latest/volume/provision
+
 
 ## Licensing
 

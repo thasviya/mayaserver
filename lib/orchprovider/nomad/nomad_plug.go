@@ -51,6 +51,8 @@ type NomadOrchestrator struct {
 	// invoke Nomad APIs
 	//nApiClient NomadClient
 
+	//region string
+
 	// nConfig represents an instance that provides the coordinates
 	// of a Nomad server / cluster deployment.
 	nConfig *NomadConfig
@@ -120,6 +122,21 @@ func (n *NomadOrchestrator) StoragePlacements() (orchprovider.StoragePlacements,
 // Hence, this resource should exhibit storage characteristics. The validations
 // for this should have been done at the volume plugin implementation.
 func (n *NomadOrchestrator) StoragePlacementReq(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
+
+	// TODO
+	// Check for the presence of region
+	// If region is present then:
+	//    1. fetch the NomadConfig applicable for this region
+	//    2. build the StorageApiClient
+	//    3. add these to a map in NomadOrchestrator struct
+	// If region is not present, then use the available region set against this
+	// NomadOrchestrator instance
+	// Set the pvc's Label with the region property
+
+	// TODO
+	// Check for the presence of datacenter
+	// If datacenter is present then fetch its StorageApiClient
+	// Set the pvc's Label with the datacenter property
 
 	job, err := PvcToJob(pvc)
 	if err != nil {

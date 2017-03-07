@@ -16,6 +16,24 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 		return nil, fmt.Errorf("Nil persistent volume claim provided")
 	}
 
+	if pvc.Name == "" {
+		return nil, fmt.Errorf("Missing name in persistent volume claim")
+	}
+
+	if pvc.Labels == nil || pvc.Labels["region"] == "" {
+		return nil, fmt.Errorf("Missing region in persistent volume claim")
+	}
+
+	if pvc.Labels["datacenter"] == "" {
+		return nil, fmt.Errorf("Missing datacenter in persistent volume claim")
+	}
+
+	// TODO
+	// ID is same as Name currently
+	jobName := helper.StringToPtr(pvc.Name)
+	region := helper.StringToPtr(pvc.Labels["region"])
+	dc := pvc.Labels["datacenter"]
+
 	// TODO
 	// Transformation from pvc or pv to nomad types & vice-versa:
 	//
@@ -30,11 +48,12 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	// Nomad specific defaults, hardcoding is OK.
 	// However, volume plugin specific stuff is BAD
 	return &api.Job{
-		Name: helper.StringToPtr(pvc.Name),
-		// TODO
-		// ID is same as Name currently
-		ID:          helper.StringToPtr(pvc.Name),
-		Datacenters: []string{"dc1"},
+		Region:      region,
+		Name:        jobName,
+		ID:          jobName,
+		Datacenters: []string{dc},
+		Type:        helper.StringToPtr(api.JobTypeService),
+		Priority:    helper.IntToPtr(1),
 		Constraints: []*api.Constraint{
 			api.NewConstraint("kernel.name", "=", "linux"),
 		},
@@ -87,6 +106,10 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 						Config: map[string]interface{}{
 							"command": "launch-jiva-ctl-with-ip",
 						},
+						LogConfig: &api.LogConfig{
+							MaxFiles:      helper.IntToPtr(3),
+							MaxFileSizeMB: helper.IntToPtr(1),
+						},
 					},
 				},
 			},
@@ -132,6 +155,10 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 						Config: map[string]interface{}{
 							"command": "launch-jiva-rep-with-ip",
 						},
+						LogConfig: &api.LogConfig{
+							MaxFiles:      helper.IntToPtr(3),
+							MaxFileSizeMB: helper.IntToPtr(1),
+						},
 					},
 				},
 			},
@@ -139,12 +166,24 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	}, nil
 }
 
+
+// TODO
+// Transformation from JobSummary to pv
+//
+//  1. Need an Interface or functional callback defined at
+// lib/api/v1/nomad.go &
+//  2. implemented by the volume plugins that want
+// to be orchestrated by Nomad
+//  3. This transformer instance needs to be injected from
+// volume plugin to orchestrator, in a generic way.
 func JobSummaryToPv(jobSummary *api.JobSummary) (*v1.PersistentVolume, error) {
 
 	if jobSummary == nil {
 		return nil, fmt.Errorf("Nil nomad job summary provided")
 	}
 
+  // TODO
+  // Needs to be filled up
 	return &v1.PersistentVolume{}, nil
 }
 

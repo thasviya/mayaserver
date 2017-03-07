@@ -299,6 +299,7 @@ WAIT:
 	// Check if this is a SIGHUP
 	if sig == syscall.SIGHUP {
 		if conf := c.handleReload(mconfig); conf != nil {
+			// Update the value only, not address
 			*mconfig = *conf
 		}
 		goto WAIT

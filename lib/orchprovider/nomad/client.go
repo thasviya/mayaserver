@@ -96,7 +96,7 @@ func (m *nomadClientUtil) Http() (*api.Client, error) {
 	if m.nomadConf != nil && m.nomadConf.Datacenter != nil {
 		// TODO
 		// Derive the datacenter at runtime
-		// Mayaconfig already understands datacenter. Use it at first attempt.
+		// Remove the region & datacenter properties from Mayaconfig
 		glog.V(2).Infof("Nomad address is set to: '%s' via conf", m.nomadConf.Datacenter["dc1"].Address)
 		apiCConf.Address = m.nomadConf.Datacenter["dc1"].Address
 	}

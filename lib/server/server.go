@@ -71,10 +71,19 @@ func (ms *MayaServer) BootstrapPlugins() error {
 	defer ms.pluginsMutex.Unlock()
 
 	// TODO
-	// Remove this hardcoding
-	// Get the Nomad address from ms.config
-	// Check if a default path can be provided even if ms.config does not mention it
-	orchestrator, err := orchprovider.InitOrchProvider(nomad.NomadOrchProviderName, "/etc/mayaserver/orchprovider/nomad.INI")
+	// Get the Orchestrator conf file path from ms.config
+	// Get a default path if ms.config does not provide it
+	orchConfPath := "/etc/mayaserver/orchprovider/"
+
+	// TODO
+	// Get the region from ms.config or http query params, or the default
+	// ms.config should not have a region for mayaserver, it should have a region
+	// for the orchestrator providers
+	// Fetch the region specific NomadConfig file
+	region := "global"
+
+	nConfFile := orchConfPath + "nomad_" + region + ".INI"
+	orchestrator, err := orchprovider.InitOrchProvider(nomad.NomadOrchProviderName, nConfFile)
 	if err != nil {
 		return err
 	}
