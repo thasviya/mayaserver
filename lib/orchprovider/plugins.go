@@ -91,19 +91,19 @@ func InitOrchProvider(name string, configFilePath string) (OrchestratorInterface
 		return nil, nil
 	}
 
+	var config *os.File
 	if configFilePath != "" {
-		var config *os.File
 		config, err = os.Open(configFilePath)
 		if err != nil {
-			glog.Fatalf("Couldn't open orchestration provider configuration %s: %#v",
-				configFilePath, err)
+			glog.Warningf("%#s", err)
 		}
 
 		defer config.Close()
+	}
+
+	if config != nil {
 		orchestrator, err = GetOrchProvider(name, config)
 	} else {
-		// Pass explicit nil so plugins can actually check for nil. See
-		// "Why is my nil error value not equal to nil?" in golang.org/doc/faq.
 		orchestrator, err = GetOrchProvider(name, nil)
 	}
 

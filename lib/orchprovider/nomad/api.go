@@ -21,17 +21,20 @@ type Apis interface {
 
 // nomadApiProvider is an implementation of nomad.Apis interface
 type nomadApiProvider struct {
+	nConfig *NomadConfig
 }
 
 // newNomadApiProvider provides a new instance of nomadApiProvider
-func newNomadApiProvider() *nomadApiProvider {
-	return &nomadApiProvider{}
+func newNomadApiProvider(nConfig *NomadConfig) *nomadApiProvider {
+	return &nomadApiProvider{
+		nConfig: nConfig,
+	}
 }
 
 // Provides a concrete implementation of Nomad api client that
 // can invoke Nomad APIs
-func (ncp *nomadApiProvider) Client() (NomadClient, error) {
-	return &nomadClientUtil{}, nil
+func (nap *nomadApiProvider) Client() (NomadClient, error) {
+	return newNomadClientUtil(nap.nConfig)
 }
 
 // Returns an instance of StorageApis.

@@ -70,7 +70,11 @@ func (ms *MayaServer) BootstrapPlugins() error {
 	ms.pluginsMutex.Lock()
 	defer ms.pluginsMutex.Unlock()
 
-	orchestrator, err := orchprovider.InitOrchProvider(nomad.NomadOrchProviderName, "")
+	// TODO
+	// Remove this hardcoding
+	// Get the Nomad address from ms.config
+	// Check if a default path can be provided even if ms.config does not mention it
+	orchestrator, err := orchprovider.InitOrchProvider(nomad.NomadOrchProviderName, "/etc/mayaserver/orchprovider/nomad.INI")
 	if err != nil {
 		return err
 	}

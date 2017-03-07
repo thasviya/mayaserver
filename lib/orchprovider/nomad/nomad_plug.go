@@ -17,7 +17,13 @@ import (
 const NomadOrchProviderName = "nomad"
 
 // This is invoked at startup.
-// TODO put the exact wording rather than startup !!
+// TODO
+//    Put the exact wording than the word `startup` !!
+//
+// TODO
+//    Build a mechanism to reload the orchestrator s.t.
+// orchestrator's config can be updated at runtime &
+// expected effects can be seen
 //
 // NOTE:
 //    This is a Golang feature.
@@ -27,8 +33,7 @@ func init() {
 	orchprovider.RegisterOrchProvider(
 		NomadOrchProviderName,
 		func(config io.Reader) (orchprovider.OrchestratorInterface, error) {
-			apis := newNomadApiProvider()
-			return newNomadOrchestrator(config, apis)
+			return newNomadOrchestrator(config)
 		})
 }
 
@@ -41,9 +46,11 @@ type NomadOrchestrator struct {
 	// nStorApis represents an instance capable of invoking
 	// storage related APIs
 	nStorApis StorageApis
+
 	// nApiClient represents an instance that can make connection &
 	// invoke Nomad APIs
 	//nApiClient NomadClient
+
 	// nConfig represents an instance that provides the coordinates
 	// of a Nomad server / cluster deployment.
 	nConfig *NomadConfig
@@ -51,24 +58,29 @@ type NomadOrchestrator struct {
 
 // newNomadOrchestrator provides a new instance of NomadOrchestrator. This is
 // invoked during binary startup.
-func newNomadOrchestrator(config io.Reader, apis Apis) (*NomadOrchestrator, error) {
+func newNomadOrchestrator(config io.Reader) (*NomadOrchestrator, error) {
 
 	glog.Infof("Building nomad orchestration provider")
 
-	// nomad api client
-	nApiClient, err := apis.Client()
-	if err != nil {
-		return nil, fmt.Errorf("error creating Nomad api client: %v", err)
-	}
-
+	// Transform the Reader to a NomadConfig
 	nCfg, err := readNomadConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read Nomad orchestration provider config file: %v", err)
+		return nil, fmt.Errorf("unable to read Nomad orchestrator's config: %v", err)
 	}
 
 	// TODO
 	// validations of the populated config structure
 
+	// Get a new instance of Nomad API Provider
+	apis := newNomadApiProvider(nCfg)
+
+	// Get the Nomad api client
+	nApiClient, err := apis.Client()
+	if err != nil {
+		return nil, fmt.Errorf("error creating Nomad api client: %v", err)
+	}
+
+	// Get Nomad's storage specific API provider
 	nStorApis, err := apis.StorageApis(nApiClient)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Nomad storage operations instance: %v", err)
@@ -132,7 +144,6 @@ func (n *NomadOrchestrator) StoragePlacementReq(pvc *v1.PersistentVolumeClaim) (
 // for this should have been done at the volume plugin implementation.
 func (n *NomadOrchestrator) StorageRemovalReq(pv *v1.PersistentVolume) error {
 
-	// TODO
 	job, err := PvToJob(pv)
 	if err != nil {
 		return err

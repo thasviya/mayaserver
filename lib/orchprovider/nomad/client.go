@@ -19,8 +19,22 @@ const (
 
 // NomadConfig provides the settings that has the coordinates of a
 // Nomad server or a Nomad cluster deployment.
+//
+// A NomadConfig file has .INI extension.
+// Below is a sample:
+//
+// [datacenter "dc1"]
+// address = http://10.0.0.1:4646
+//
+// [datacenter "dc2"]
+// address = http://20.0.0.2:4646
+//
+// NOTE:
+//    This is as per gcfg lib's conventions
 type NomadConfig struct {
-	Address string
+	Datacenter map[string]*struct {
+		Address string
+	}
 }
 
 // NomadClient is an abstraction over various connection modes (http, rpc)
@@ -53,6 +67,13 @@ type nomadClientUtil struct {
 	insecure   bool
 }
 
+// newNomadClientUtil provides a new instance of nomadClientUtil
+func newNomadClientUtil(nConfig *NomadConfig) (*nomadClientUtil, error) {
+	return &nomadClientUtil{
+		nomadConf: nConfig,
+	}, nil
+}
+
 // Client is used to initialize and return a new API client capable
 // of calling Nomad APIs. It uses env vars.
 func (m *nomadClientUtil) Http() (*api.Client, error) {
@@ -63,31 +84,28 @@ func (m *nomadClientUtil) Http() (*api.Client, error) {
 	val, found := os.LookupEnv(EnvNomadAddress)
 
 	if !found {
-		// TODO
-		// Set this under verbose logging
-		glog.Infof("Env variable '%s' is not set", EnvNomadAddress)
+		glog.V(2).Infof("Env variable '%s' is not set", EnvNomadAddress)
 	}
 
 	if val != "" {
-		// TODO
-		// Set this under verbose logging
-		glog.Infof("Nomad address is set to '%s' via env var", val)
+		glog.V(2).Infof("Nomad address is set to '%s' via env var", val)
 		apiCConf.Address = val
 	}
 
 	// Override from conf structure
-	if m.nomadConf != nil && m.nomadConf.Address != "" {
+	if m.nomadConf != nil && m.nomadConf.Datacenter != nil {
 		// TODO
-		// Set this under verbose logging
-		glog.Infof("Nomad address is reset to: '%s' via conf", m.nomadConf.Address)
-		apiCConf.Address = m.nomadConf.Address
+		// Derive the datacenter at runtime
+		// Mayaconfig already understands datacenter. Use it at first attempt.
+		glog.V(2).Infof("Nomad address is set to: '%s' via conf", m.nomadConf.Datacenter["dc1"].Address)
+		apiCConf.Address = m.nomadConf.Datacenter["dc1"].Address
 	}
 
 	if apiCConf.Address == "" {
 		return nil, fmt.Errorf("Nomad address is not set")
 	}
 
-	glog.Infof("Nomad will be reached at: '%s'", apiCConf.Address)
+	glog.V(2).Infof("Nomad will be reached at: '%s'", apiCConf.Address)
 
 	if v := os.Getenv(EnvNomadRegion); v != "" {
 		apiCConf.Region = v
