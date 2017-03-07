@@ -48,13 +48,13 @@ mentioned features, the WIP tag will be removed.
 - Verify the contents of Mayaserver's orchestrator's .INI file
   - Below is a sample .INI file that is valid for Nomad as mayaserver's orchestrator
 
-    ```ini
-    [datacenter "dc1"]
-    address = http://172.28.128.3:4646
+  ```ini
+  [datacenter "dc1"]
+  address = http://172.28.128.3:4646
 
-    [datacenter "dc2"]
-    address = http://20.0.0.2:4646
-    ```
+  [datacenter "dc2"]
+  address = http://20.0.0.2:4646
+  ```
 
 - Verify if Mayaserver is running as a process
     - Watch out for the process with 5656 as the port
@@ -83,11 +83,15 @@ mentioned features, the WIP tag will be removed.
   ```
 
 - Verify if mayaserver's services are responding
-  - Metadata
-    - curl http://$IP:5656/latest/meta-data/instance-id
-  - Volume
-    - curl http://172.28.128.4:5656/latest/volume/provision
+  - `NOTE: Use the bind address on which your Mayaserver is running`
 
+  ```bash
+  # Metadata
+  $ curl http://172.28.128.4:5656/latest/meta-data/instance-id
+
+  # Volume
+  $ curl http://172.28.128.4:5656/latest/volume/provision
+  ```
 
 ## Licensing
 
