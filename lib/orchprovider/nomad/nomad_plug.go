@@ -143,12 +143,12 @@ func (n *NomadOrchestrator) StoragePlacementReq(pvc *v1.PersistentVolumeClaim) (
 		return nil, err
 	}
 
-	jSum, err := n.nStorApis.CreateStorage(job)
+	evals, err := n.nStorApis.CreateStorage(job)
 	if err != nil {
 		return nil, err
 	}
 
-	return JobSummaryToPv(jSum)
+	return JobEvalsToPv(job, evals)
 }
 
 // StorageRemovalReq is a contract method implementation of

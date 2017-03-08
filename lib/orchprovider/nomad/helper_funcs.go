@@ -70,7 +70,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 		ID:          jobName,
 		Datacenters: []string{dc},
 		Type:        helper.StringToPtr(api.JobTypeService),
-		Priority:    helper.IntToPtr(1),
+		Priority:    helper.IntToPtr(50),
 		Constraints: []*api.Constraint{
 			api.NewConstraint("kernel.name", "=", "linux"),
 		},
@@ -194,6 +194,29 @@ func JobSummaryToPv(jobSummary *api.JobSummary) (*v1.PersistentVolume, error) {
 	// TODO
 	// Needs to be filled up
 	return &v1.PersistentVolume{}, nil
+}
+
+// TODO
+// This transformation is a very crude approach currently.
+func JobEvalsToPv(submittedJob *api.Job, evals []*api.Evaluation) (*v1.PersistentVolume, error) {
+
+	if evals == nil {
+		return nil, fmt.Errorf("Nil job evaluations provided")
+	}
+
+	annotations := make(map[string]string)
+
+	for _, eval := range evals {
+		annotations["eval::"+eval.ID+"::node"] = eval.NodeID
+		annotations["eval::"+eval.ID+"::status"] = eval.Status
+		annotations["eval::"+eval.ID+"::desc"] = eval.StatusDescription
+	}
+
+	pv := &v1.PersistentVolume{}
+	pv.Name = *submittedJob.ID
+	pv.Annotations = annotations
+
+	return pv, nil
 }
 
 // Transform a PersistentVolume type to Nomad Job type
