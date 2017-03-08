@@ -32,5 +32,5 @@ type StoragePlacements interface {
 
 	// StorageRemovalReq will try to delete the storage resource(s) at
 	// the infrastructure
-	StorageRemovalReq(pv *v1.PersistentVolume) error
+	StorageRemovalReq(pv *v1.PersistentVolume) (*v1.PersistentVolume, error)
 }

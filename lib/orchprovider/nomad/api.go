@@ -58,7 +58,7 @@ type StorageApis interface {
 	CreateStorage(job *api.Job) ([]*api.Evaluation, error)
 
 	// Delete makes a request to Nomad to delete the storage resource
-	DeleteStorage(job *api.Job) (string, error)
+	DeleteStorage(job *api.Job) (*api.Evaluation, error)
 }
 
 // nomadStorageApi is an implementation of the nomad.StorageApis interface
@@ -106,16 +106,16 @@ func (nsApi *nomadStorageApi) CreateStorage(job *api.Job) ([]*api.Evaluation, er
 //    Nomad does not have persistent volume as its first class citizen.
 // Hence, this resource should exhibit storage characteristics. The validations
 // for this should have been done at the volume plugin implementation.
-func (nsApi *nomadStorageApi) DeleteStorage(job *api.Job) (string, error) {
+func (nsApi *nomadStorageApi) DeleteStorage(job *api.Job) (*api.Evaluation, error) {
 
 	nApiClient := nsApi.nApiClient
 	if nApiClient == nil {
-		return "", fmt.Errorf("nomad api client not initialized")
+		return nil, fmt.Errorf("nomad api client not initialized")
 	}
 
 	nApiHttpClient, err := nApiClient.Http()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	//func (j *Jobs) Deregister(jobID string, q *WriteOptions) (string, *WriteMeta, error)
@@ -123,8 +123,14 @@ func (nsApi *nomadStorageApi) DeleteStorage(job *api.Job) (string, error) {
 	evalID, _, err := nApiHttpClient.Jobs().Deregister(*job.ID, &api.WriteOptions{})
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return evalID, nil
+	//func (e *Evaluations) Info(evalID string, q *QueryOptions) (*Evaluation, *QueryMeta, error) {
+	eval, _, err := nApiHttpClient.Evaluations().Info(evalID, &api.QueryOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return eval, nil
 }

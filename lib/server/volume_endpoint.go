@@ -109,11 +109,11 @@ func (s *HTTPServer) volumeDelete(resp http.ResponseWriter, req *http.Request, v
 	pv := &v1.PersistentVolume{}
 	pv.Name = volName
 
-	err = jivaDel.Delete(pv)
+	dPV, err := jivaDel.Delete(pv)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	return dPV, nil
 }

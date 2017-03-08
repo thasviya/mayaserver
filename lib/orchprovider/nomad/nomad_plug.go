@@ -9,6 +9,7 @@ import (
 	"io"
 
 	"github.com/golang/glog"
+	"github.com/hashicorp/nomad/api"
 	"github.com/openebs/mayaserver/lib/api/v1"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 )
@@ -159,20 +160,20 @@ func (n *NomadOrchestrator) StoragePlacementReq(pvc *v1.PersistentVolumeClaim) (
 //    Nomad does not have persistent volume as its first class citizen.
 // Hence, this resource should exhibit storage characteristics. The validations
 // for this should have been done at the volume plugin implementation.
-func (n *NomadOrchestrator) StorageRemovalReq(pv *v1.PersistentVolume) error {
+func (n *NomadOrchestrator) StorageRemovalReq(pv *v1.PersistentVolume) (*v1.PersistentVolume, error) {
 
 	job, err := PvToJob(pv)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	evalID, err := n.nStorApis.DeleteStorage(job)
-
-	glog.Infof("Volume removal req with eval ID '%s' placed for pv '%s'", evalID, pv.Name)
+	eval, err := n.nStorApis.DeleteStorage(job)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	glog.Infof("Volume removal req with eval '%s' placed for pv '%s'", eval.ID, pv.Name)
+
+	return JobEvalsToPv(job, []*api.Evaluation{eval})
 }

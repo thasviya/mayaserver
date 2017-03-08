@@ -137,35 +137,18 @@ func (j *jivaStor) Provision(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolum
 	// Validations of input i.e. claim
 
 	// Delegate to its provider
-	pv, err := j.jivaOps.Provision(pvc)
-
-	if err != nil {
-		return nil, err
-	}
-
-	glog.V(2).Infof("Successfully created jiva volume '%s' '%s'", pv.Name, pv.UID)
-
-	return pv, nil
+	return j.jivaOps.Provision(pvc)
 }
 
 // jivaStor removes a volume via its jivaOps property.
 //
 // NOTE:
 //    This is a contract implementation of volume.Deleter interface
-func (j *jivaStor) Delete(pv *v1.PersistentVolume) error {
+func (j *jivaStor) Delete(pv *v1.PersistentVolume) (*v1.PersistentVolume, error) {
 
 	// TODO
 	// Validations if any
 
 	// Delegate to its provider
-	err := j.jivaOps.Delete(pv)
-
-	if err != nil {
-		return err
-	}
-
-	glog.Infof("Successfully deleted jiva volume '%s' '%s'", pv.Name, pv.UID)
-
-	return nil
-
+	return j.jivaOps.Delete(pv)
 }

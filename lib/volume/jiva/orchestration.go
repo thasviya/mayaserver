@@ -17,7 +17,7 @@ import (
 type JivaOps interface {
 	Provision(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 
-	Delete(*v1.PersistentVolume) error
+	Delete(*v1.PersistentVolume) (*v1.PersistentVolume, error)
 }
 
 func newJivaOpsProvider(aspect volume.VolumePluginAspect) (JivaOps, error) {
@@ -54,16 +54,16 @@ func (jOrch *jivaOrchestrator) Provision(pvc *v1.PersistentVolumeClaim) (*v1.Per
 }
 
 // Delete tries to delete the jiva volume via an orchestrator
-func (jOrch *jivaOrchestrator) Delete(pv *v1.PersistentVolume) error {
+func (jOrch *jivaOrchestrator) Delete(pv *v1.PersistentVolume) (*v1.PersistentVolume, error) {
 	orchestrator, err := jOrch.aspect.GetOrchProvider()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	storageOrchestrator, ok := orchestrator.StoragePlacements()
 
 	if !ok {
-		return fmt.Errorf("Orchestrator '%s' does not provide storage services", orchestrator.Name())
+		return nil, fmt.Errorf("Orchestrator '%s' does not provide storage services", orchestrator.Name())
 	}
 
 	return storageOrchestrator.StorageRemovalReq(pv)

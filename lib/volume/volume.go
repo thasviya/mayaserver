@@ -30,7 +30,6 @@ type Provisioner interface {
 	// Provision tries creating (i.e. claim) a resource in the underlying storage
 	// system. This method returns PersistentVolume representing the
 	// created storage resource.
-	//Provision() (*v1.PersistentVolume, error)
 	Provision(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 }
 
@@ -39,6 +38,5 @@ type Provisioner interface {
 // return indicates success.
 type Deleter interface {
 	// Delete removes the allocated resource in the storage system.
-	//Delete() error
-	Delete(*v1.PersistentVolume) error
+	Delete(*v1.PersistentVolume) (*v1.PersistentVolume, error)
 }

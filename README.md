@@ -90,7 +90,8 @@ mentioned features, the WIP tag will be removed.
   $ curl http://172.28.128.4:5656/latest/meta-data/instance-id
 
   # Volume
-  $ curl http://172.28.128.4:5656/latest/volume/provision
+  $ curl http://172.28.128.4:5656/latest/volume/provision/mycoolvol
+  $ curl http://172.28.128.4:5656/latest/volume/delete/mycoolvol
   ```
 
 ## Licensing
