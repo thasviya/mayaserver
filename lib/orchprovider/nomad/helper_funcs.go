@@ -35,19 +35,21 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	region := helper.StringToPtr(pvc.Labels["region"])
 	dc := pvc.Labels["datacenter"]
 
-	jivaVolName := pvc.Name + "vsm1vol1"
-	jivaVolSize := "10g"
+	jivaGroupName := "pod"
+	jivaVolName := pvc.Name
+	jivaVolSize := "5g"
+
+	feTaskGroup := "fe" + jivaGroupName
+	feTaskName := "fe1"
+	beTaskGroup := "be" + jivaGroupName
+	beTaskName := "be1"
+
 	jivaFeVersion := "openebs/jiva:latest"
 	jivaFeNetwork := "host_static"
 	jivaFeIP := "172.28.128.101"
 	jivaBeIP := "172.28.128.102"
 	jivaFeSubnet := "24"
 	jivaFeInterface := "enp0s8"
-
-	feTaskGroup := "fegroup"
-	feTaskName := "fe"
-	beTaskGroup := "begroup"
-	beTaskName := "bestore1"
 
 	// TODO
 	// Transformation from pvc or pv to nomad types & vice-versa:
@@ -72,19 +74,11 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 		Constraints: []*api.Constraint{
 			api.NewConstraint("kernel.name", "=", "linux"),
 		},
-		Meta: map[string]string{
-			"JIVA_VOLNAME":           jivaVolName,
-			"JIVA_VOLSIZE":           jivaVolSize,
-			"JIVA_FRONTEND_VERSION":  jivaFeVersion,
-			"JIVA_FRONTEND_NETWORK":  jivaFeNetwork,
-			"JIVA_FRONTENDIP":        jivaFeIP,
-			"JIVA_FRONTENDSUBNET":    jivaFeSubnet,
-			"JIVA_FRONTENDINTERFACE": jivaFeInterface,
-		},
 		TaskGroups: []*api.TaskGroup{
 			// jiva frontend
 			&api.TaskGroup{
-				Name: helper.StringToPtr(feTaskGroup),
+				Name:  helper.StringToPtr(feTaskGroup),
+				Count: helper.IntToPtr(1),
 				RestartPolicy: &api.RestartPolicy{
 					Attempts: helper.IntToPtr(3),
 					Interval: helper.TimeToPtr(5 * time.Minute),
@@ -105,7 +99,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 							},
 						},
 						Env: map[string]string{
-							"JIVA_CTL_NAME":    pvc.Name + "-" + feTaskName,
+							"JIVA_CTL_NAME":    pvc.Name + "-" + feTaskGroup + "-" + feTaskName,
 							"JIVA_CTL_VERSION": jivaFeVersion,
 							"JIVA_CTL_VOLNAME": jivaVolName,
 							"JIVA_CTL_VOLSIZE": jivaVolSize,
@@ -130,7 +124,8 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 			},
 			// jiva replica
 			&api.TaskGroup{
-				Name: helper.StringToPtr(beTaskGroup),
+				Name:  helper.StringToPtr(beTaskGroup),
+				Count: helper.IntToPtr(1),
 				RestartPolicy: &api.RestartPolicy{
 					Attempts: helper.IntToPtr(3),
 					Interval: helper.TimeToPtr(5 * time.Minute),
@@ -151,11 +146,11 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 							},
 						},
 						Env: map[string]string{
-							"JIVA_REP_NAME":     pvc.Name + "-" + beTaskName,
+							"JIVA_REP_NAME":     pvc.Name + "-" + beTaskGroup + "-" + beTaskName,
 							"JIVA_CTL_IP":       jivaFeIP,
 							"JIVA_REP_VOLNAME":  jivaVolName,
 							"JIVA_REP_VOLSIZE":  jivaVolSize,
-							"JIVA_REP_VOLSTORE": "/tmp/jiva/" + pvc.Name + "/" + beTaskName,
+							"JIVA_REP_VOLSTORE": "/tmp/jiva/" + pvc.Name + beTaskGroup + "/" + beTaskName,
 							"JIVA_REP_VERSION":  jivaFeVersion,
 							"JIVA_REP_NETWORK":  jivaFeNetwork,
 							"JIVA_REP_IFACE":    jivaFeInterface,

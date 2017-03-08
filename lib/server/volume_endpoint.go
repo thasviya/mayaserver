@@ -70,7 +70,7 @@ func (s *HTTPServer) volumeProvision(resp http.ResponseWriter, req *http.Request
 	// The datacenter property should accept multiple values
 	// A region can consist of multiple datacenters otherwise known as zones
 	pvc.Labels = map[string]string{
-		"region":     "default",
+		"region":     "global",
 		"datacenter": "dc1",
 	}
 
