@@ -67,11 +67,22 @@ func (s *HTTPServer) volumeProvision(resp http.ResponseWriter, req *http.Request
 
 	// TODO
 	// This should be set from http query parameters if present
-	// The datacenter property should accept multiple values
-	// A region can consist of multiple datacenters otherwise known as zones
+	// Iterate through the query parameters & set them as-is into Labels.
+	// Set the empty properties with defaults at respective volume plugin
+	// The volume plugin may use a config file to fetch the default values
+	//
+	// NOTE:
+	//  1. The datacenter property should accept multiple values
+	//  2. A region can consist of multiple datacenters otherwise known as zones
 	pvc.Labels = map[string]string{
-		"region":     "global",
-		"datacenter": "dc1",
+		"region":          "global",
+		"datacenter":      "dc1",
+		"jivafeversion":   "openebs/jiva:latest",
+		"jivafenetwork":   "host_static",
+		"jivafeip":        "172.28.128.101",
+		"jivabeip":        "172.28.128.102",
+		"jivafesubnet":    "24",
+		"jivafeinterface": "enp0s8",
 	}
 
 	pv, err := jivaProv.Provision(pvc)

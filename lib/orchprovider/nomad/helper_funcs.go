@@ -20,12 +20,40 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 		return nil, fmt.Errorf("Missing name in persistent volume claim")
 	}
 
-	if pvc.Labels == nil || pvc.Labels["region"] == "" {
+	if pvc.Labels == nil {
+		return nil, fmt.Errorf("Missing labels in persistent volume claim")
+	}
+
+	if pvc.Labels["region"] == "" {
 		return nil, fmt.Errorf("Missing region in persistent volume claim")
 	}
 
 	if pvc.Labels["datacenter"] == "" {
 		return nil, fmt.Errorf("Missing datacenter in persistent volume claim")
+	}
+
+	if pvc.Labels["jivafeversion"] == "" {
+		return nil, fmt.Errorf("Missing jiva fe version in persistent volume claim")
+	}
+
+	if pvc.Labels["jivafenetwork"] == "" {
+		return nil, fmt.Errorf("Missing jiva fe network in persistent volume claim")
+	}
+
+	if pvc.Labels["jivafeip"] == "" {
+		return nil, fmt.Errorf("Missing jiva fe ip in persistent volume claim")
+	}
+
+	if pvc.Labels["jivabeip"] == "" {
+		return nil, fmt.Errorf("Missing jiva be ip in persistent volume claim")
+	}
+
+	if pvc.Labels["jivafesubnet"] == "" {
+		return nil, fmt.Errorf("Missing jiva fe subnet in persistent volume claim")
+	}
+
+	if pvc.Labels["jivafeinterface"] == "" {
+		return nil, fmt.Errorf("Missing jiva fe interface in persistent volume claim")
 	}
 
 	// TODO
@@ -44,12 +72,12 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	beTaskGroup := "be" + jivaGroupName
 	beTaskName := "be1"
 
-	jivaFeVersion := "openebs/jiva:latest"
-	jivaFeNetwork := "host_static"
-	jivaFeIP := "172.28.128.101"
-	jivaBeIP := "172.28.128.102"
-	jivaFeSubnet := "24"
-	jivaFeInterface := "enp0s8"
+	jivaFeVersion := pvc.Labels["jivafeversion"]
+	jivaFeNetwork := pvc.Labels["jivafenetwork"]
+	jivaFeIP := pvc.Labels["jivafeip"]
+	jivaBeIP := pvc.Labels["jivabeip"]
+	jivaFeSubnet := pvc.Labels["jivafesubnet"]
+	jivaFeInterface := pvc.Labels["jivafeinterface"]
 
 	// TODO
 	// Transformation from pvc or pv to nomad types & vice-versa:
