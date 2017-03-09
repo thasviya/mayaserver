@@ -206,16 +206,17 @@ func JobEvalsToPv(submittedJob *api.Job, evals []*api.Evaluation) (*v1.Persisten
 
 	annotations := make(map[string]string)
 
-  // TODO
-  // Need to push for evaluations & allocations into types
-  // These can be embedded inside PersistentVolume
-	for _, eval := range evals {
-		annotations["eval::"+eval.ID+"::node"] = eval.NodeID
-		annotations["eval::"+eval.ID+"::status"] = eval.Status
-		annotations["eval::"+eval.ID+"::desc"] = eval.StatusDescription
+	pvEvals := make([]api.Evaluation, len(evals))
+
+	// TODO
+	// Need to push for evaluations & allocations into types
+	// These can be embedded inside PersistentVolume
+	for i, eval := range evals {
+		pvEvals[i] = *eval
 	}
 
 	pv := &v1.PersistentVolume{}
+	pv.Evals = pvEvals
 	pv.Name = *submittedJob.ID
 	pv.Annotations = annotations
 

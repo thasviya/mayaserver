@@ -28,8 +28,13 @@ mentioned features, the WIP tag will be removed.
   - vagrant ssh
 - from within the vagrant VM run below steps:
   - make init
+    - `NOTE: This is a time taking operation`
+    - This downloads all the vendoring libraries
+    - Typically required for the very first attempt only
+    - In case of add/update of new/existing vendoring libraries:
+      - use `make sync` than `make init`
   - make
-  - make release
+  - make bin
   - To run the mayaserver at **default bind address**:
     - sudo nohup mayaserver up &>mserver.log &
   - To run the mayaserver at a **particular bind address**:

@@ -14,6 +14,7 @@
 package v1
 
 import (
+	nomadapi "github.com/hashicorp/nomad/api"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -108,6 +109,8 @@ type PersistentVolume struct {
 	// +optional
 	metav1.ObjectMeta
 
+	StateMachine
+
 	//Spec defines a persistent volume owned by OpenEBS cluster
 	// +optional
 	Spec PersistentVolumeSpec
@@ -115,6 +118,24 @@ type PersistentVolume struct {
 	// Status represents the current information about persistent volume.
 	// +optional
 	Status PersistentVolumeStatus
+}
+
+// StateMachine holds finely granular level of information of a request,
+// an action, etc. This may be embedded in other structures to make maximum
+// sense.
+//
+// NOTE:
+//    This is a derivative of Nomad's types.
+type StateMachine struct {
+	// Evaluation is used anytime we need to apply business logic as a result
+	// of a change to our desired state or the emergent state. When the inputs
+	// change, we need to "evaluate" them, potentially taking action or doing
+	// nothing if the state of the world does not require it.
+	Evals []nomadapi.Evaluation
+
+	// Allocation is used to allocate the placement of a task to its desired
+	// target.
+	Allocs []nomadapi.Allocation
 }
 
 // PersistentVolumeSource represents the source type of the persistent volume.
@@ -125,7 +146,7 @@ type PersistentVolume struct {
 type PersistentVolumeSource struct {
 	// OpenEBS represents an OpenEBS disk
 	// +optional
-	OpenEBS *OpenEBS
+	OpenEBS OpenEBS
 }
 
 // PersistentVolumeSpec provides various characteristics of a volume

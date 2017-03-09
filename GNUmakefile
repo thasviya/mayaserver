@@ -35,6 +35,10 @@ deps:
 	@govendor sync
 	cp -r ./vendor/github.com/kubernetes/kubernetes/staging/src/k8s.io/ ./vendor/
 
+sync:
+	@govendor sync
+	cp -r ./vendor/github.com/kubernetes/kubernetes/staging/src/k8s.io/ ./vendor/
+
 clean:
 	rm -rf bin
 	rm -rf ${GOPATH}/bin/${CTLNAME}
@@ -87,4 +91,4 @@ bootstrap:
 install: bin/${CTLNAME}
 	install -o root -g root -m 0755 ./bin/${CTLNAME} /usr/local/bin/${CTLNAME}
 
-.PHONY: all bin cov install test vet format cover bootstrap release clean deps init dev
+.PHONY: all bin cov install test vet format cover bootstrap release clean deps init dev sync
