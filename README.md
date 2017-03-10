@@ -35,8 +35,6 @@ mentioned features, the WIP tag will be removed.
       - use `make sync` than `make init`
   - make
   - make bin
-  - To run the mayaserver at **default bind address**:
-    - sudo nohup mayaserver up &>mserver.log &
   - To run the mayaserver at a **particular bind address**:
     - sudo nohup mayaserver up -bind=172.28.128.4 &>mserver.log &
 
@@ -57,8 +55,6 @@ mentioned features, the WIP tag will be removed.
   [datacenter "dc1"]
   address = http://172.28.128.3:4646
 
-  [datacenter "dc2"]
-  address = http://20.0.0.2:4646
   ```
 
 - Verify if Mayaserver is running as a process
