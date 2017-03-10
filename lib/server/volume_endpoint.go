@@ -9,6 +9,23 @@ import (
 	"github.com/openebs/mayaserver/lib/volume/jiva"
 )
 
+func (s *HTTPServer) VolumesRequest(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
+	switch req.Method {
+	case "GET":
+		return s.volumeListRequest(resp, req)
+	case "PUT", "POST":
+		return s.volumeUpdate(resp, req, "")
+	default:
+		return nil, CodedError(405, ErrInvalidMethod)
+	}
+}
+
+// TODO
+// Not yet implemented
+func (s *HTTPServer) volumeListRequest(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
+	return nil, CodedError(405, "Volume list not yet implemented")
+}
+
 // VolumeSpecificRequest is a http handler implementation.
 // The URL path is parsed to match specific implementations.
 //
@@ -25,10 +42,6 @@ func (s *HTTPServer) VolumeSpecificRequest(resp http.ResponseWriter, req *http.R
 
 	switch {
 
-	case strings.Contains(path, "/provision/"):
-		volName := strings.TrimPrefix(path, "/provision/")
-		return s.volumeProvision(resp, req, volName)
-
 	case strings.Contains(path, "/delete/"):
 		volName := strings.TrimPrefix(path, "/delete/")
 		return s.volumeDelete(resp, req, volName)
@@ -38,10 +51,24 @@ func (s *HTTPServer) VolumeSpecificRequest(resp http.ResponseWriter, req *http.R
 	}
 }
 
-func (s *HTTPServer) volumeProvision(resp http.ResponseWriter, req *http.Request, volName string) (interface{}, error) {
+func (s *HTTPServer) volumeUpdate(resp http.ResponseWriter, req *http.Request, volName string) (interface{}, error) {
 
-	if volName == "" {
-		return nil, fmt.Errorf("Volume name missing for provisioning")
+	pvc := v1.PersistentVolumeClaim{}
+
+	if err := decodeYamlBody(req, &pvc); err != nil {
+		return nil, CodedError(400, err.Error())
+	}
+
+	//if pvc == nil {
+	//	return nil, CodedError(400, "Empty or Invalid volume claim request")
+	//}
+
+	if pvc.Name == "" {
+		return nil, CodedError(400, fmt.Sprintf("Volume name hasn't been provided: '%v'", pvc))
+	}
+
+	if pvc.Labels == nil {
+		return nil, CodedError(400, fmt.Sprintf("Volume labels hasn't been provided: '%v'", pvc))
 	}
 
 	// TODO
@@ -61,31 +88,7 @@ func (s *HTTPServer) volumeProvision(resp http.ResponseWriter, req *http.Request
 		return nil, fmt.Errorf("Volume provisioning not supported by '%s'", volPlugName)
 	}
 
-	// Provision a jiva volume
-	pvc := &v1.PersistentVolumeClaim{}
-	pvc.Name = volName
-
-	// TODO
-	// This should be set from http query parameters if present
-	// Iterate through the query parameters & set them as-is into Labels.
-	// Set the empty properties with defaults at respective volume plugin
-	// The volume plugin may use a config file to fetch the default values
-	//
-	// NOTE:
-	//  1. The datacenter property should accept multiple values
-	//  2. A region can consist of multiple datacenters otherwise known as zones
-	pvc.Labels = map[string]string{
-		"region":          "global",
-		"datacenter":      "dc1",
-		"jivafeversion":   "openebs/jiva:latest",
-		"jivafenetwork":   "host_static",
-		"jivafeip":        "172.28.128.101",
-		"jivabeip":        "172.28.128.102",
-		"jivafesubnet":    "24",
-		"jivafeinterface": "enp0s8",
-	}
-
-	pv, err := jivaProv.Provision(pvc)
+	pv, err := jivaProv.Provision(&pvc)
 
 	if err != nil {
 		return nil, err

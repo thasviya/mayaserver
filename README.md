@@ -38,6 +38,63 @@ mentioned features, the WIP tag will be removed.
   - To run the mayaserver at a **particular bind address**:
     - sudo nohup mayaserver up -bind=172.28.128.4 &>mserver.log &
 
+## Mayaserver's REST APIs
+
+- `NOTE: Use the bind address on which your Mayaserver is running`
+
+- Get InstanceID
+
+  ```bash
+    # Metadata
+    $ curl http://172.28.128.4:5656/latest/meta-data/instance-id
+  ```
+
+- Volume provisioning & deletion requires the presence of a .INI file
+  - This orchestrator file provides the coordinates of Nomad server/cluster
+  - i.e. `/etc/mayaserver/orchprovider/nomad_global.INI`
+
+- Below is a sample volume spec that can be provisioned
+
+  ```yaml
+  # Similar to K8s' PersistentVolumeClaim
+  kind: PersistentVolumeClaim
+  apiVersion: v1
+  metadata:
+    name: ssdvol
+    labels:
+      region: global
+      datacenter: dc1
+      jivafeversion: openebs/jiva:latest
+      jivafenetwork: host
+      jivafeip: 172.28.128.101
+      jivabeip: 172.28.128.102
+      jivafesubnet: 24
+      jivafeinterface: enp0s8
+    annotations:
+      volume.beta.openebs.io/orchestrator-class: nomad
+  spec:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 3Gi
+  ```
+
+- Volume Provisioning
+ 
+  ```bash
+  $ curl -k -H "Content-Type: application/yaml" \
+    -XPOST -d"$(cat lib/mockit/sample_openebs_pvc.yaml)" \
+    http://172.28.128.4:5656/latest/volumes/
+  ```
+  
+- Volume Deletion
+  
+  ```bash
+  $ curl http://172.28.128.4:5656/latest/volume/delete/ssdvol
+  ```
+
+
 ## Troubleshoot
 
 - Verify the presence of Mayaserver binary
@@ -54,7 +111,6 @@ mentioned features, the WIP tag will be removed.
   ```ini
   [datacenter "dc1"]
   address = http://172.28.128.3:4646
-
   ```
 
 - Verify if Mayaserver is running as a process
@@ -83,17 +139,6 @@ mentioned features, the WIP tag will be removed.
   tcp6       0      0 :::22                   :::*                    LISTEN      1258/sshd
   ```
 
-- Verify if mayaserver's services are responding
-  - `NOTE: Use the bind address on which your Mayaserver is running`
-
-  ```bash
-  # Metadata
-  $ curl http://172.28.128.4:5656/latest/meta-data/instance-id
-
-  # Volume
-  $ curl http://172.28.128.4:5656/latest/volume/provision/mycoolvol
-  $ curl http://172.28.128.4:5656/latest/volume/delete/mycoolvol
-  ```
 
 ## Licensing
 

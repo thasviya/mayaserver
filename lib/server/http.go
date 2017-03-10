@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -17,13 +18,17 @@ import (
 	"github.com/openebs/mayaserver/lib/config"
 	"github.com/openebs/mayaserver/structs"
 	"github.com/ugorji/go/codec"
+	//"gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
 
 	"github.com/openebs/mayaserver/lib/volume"
 )
 
 const (
 	// ErrInvalidMethod is used if the HTTP method is not supported
-	ErrInvalidMethod = "Invalid method"
+	ErrInvalidMethod     = "Invalid method"
+	ErrGetMethodRequired = "GET method required"
+	ErrPutMethodRequired = "PUT/POST method required"
 )
 
 var (
@@ -124,6 +129,12 @@ func (s *HTTPServer) registerHandlers(serviceProvider string, enableDebug bool) 
 	// NOTE - The curried func (due to wrap) is set as mux handler
 	// NOTE - The original handler is passed as a func to the wrap method
 	s.mux.HandleFunc("/latest/meta-data/", s.wrap(s.MetaSpecificRequest))
+
+	// Can be a GET, PUT, or POST.
+	// Handler has the intelligence to cater to various http methods.
+	s.mux.HandleFunc("/latest/volumes/", s.wrap(s.VolumesRequest))
+
+	// A particular volume specific request is handled here
 	s.mux.HandleFunc("/latest/volume/", s.wrap(s.VolumeSpecificRequest))
 }
 
@@ -219,10 +230,21 @@ func (s *HTTPServer) wrap(handler func(resp http.ResponseWriter, req *http.Reque
 	return f
 }
 
-// decodeBody is used to decode a JSON request body
-func decodeBody(req *http.Request, out interface{}) error {
+// decodeJsonBody is used to decode a JSON request body
+func decodeJsonBody(req *http.Request, out interface{}) error {
 	dec := json.NewDecoder(req.Body)
 	return dec.Decode(&out)
+}
+
+// decodeYamlBody is used to decode a YAML request body
+func decodeYamlBody(req *http.Request, out interface{}) error {
+	// Get []bytes from io.Reader
+	b, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		return err
+	}
+
+	return yaml.Unmarshal(b, &out)
 }
 
 // setIndex is used to set the index response header

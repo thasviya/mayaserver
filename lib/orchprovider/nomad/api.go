@@ -118,15 +118,12 @@ func (nsApi *nomadStorageApi) DeleteStorage(job *api.Job) (*api.Evaluation, erro
 		return nil, err
 	}
 
-	//func (j *Jobs) Deregister(jobID string, q *WriteOptions) (string, *WriteMeta, error)
-	//evalID, deregMeta, err := nApiHttpClient.Jobs().Deregister(*job.ID, &api.WriteOptions{})
 	evalID, _, err := nApiHttpClient.Jobs().Deregister(*job.ID, &api.WriteOptions{})
 
 	if err != nil {
 		return nil, err
 	}
 
-	//func (e *Evaluations) Info(evalID string, q *QueryOptions) (*Evaluation, *QueryMeta, error) {
 	eval, _, err := nApiHttpClient.Evaluations().Info(evalID, &api.QueryOptions{})
 	if err != nil {
 		return nil, err
