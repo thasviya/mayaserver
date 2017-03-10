@@ -100,7 +100,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 		Type:        helper.StringToPtr(api.JobTypeService),
 		Priority:    helper.IntToPtr(50),
 		Constraints: []*api.Constraint{
-			api.NewConstraint("kernel.name", "=", "linux"),
+			api.NewConstraint("${attr.kernel.name}", "=", "linux"),
 		},
 		TaskGroups: []*api.TaskGroup{
 			// jiva frontend
@@ -138,6 +138,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 						Artifacts: []*api.TaskArtifact{
 							&api.TaskArtifact{
 								GetterSource: helper.StringToPtr("https://raw.githubusercontent.com/openebs/jiva/master/scripts/launch-jiva-ctl-with-ip"),
+								RelativeDest: helper.StringToPtr("local/"),
 							},
 						},
 						Config: map[string]interface{}{
@@ -188,6 +189,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 						Artifacts: []*api.TaskArtifact{
 							&api.TaskArtifact{
 								GetterSource: helper.StringToPtr("https://raw.githubusercontent.com/openebs/jiva/master/scripts/launch-jiva-rep-with-ip"),
+								RelativeDest: helper.StringToPtr("local/"),
 							},
 						},
 						Config: map[string]interface{}{
