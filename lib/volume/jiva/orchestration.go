@@ -15,12 +15,14 @@ import (
 )
 
 type JivaOps interface {
+	Info(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
+
 	Provision(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 
 	Delete(*v1.PersistentVolume) (*v1.PersistentVolume, error)
 }
 
-func newJivaOpsProvider(aspect volume.VolumePluginAspect) (JivaOps, error) {
+func newJivaOrchestrator(aspect volume.VolumePluginAspect) (JivaOps, error) {
 	if aspect == nil {
 		return nil, fmt.Errorf("Nil volume plugin aspect was provided")
 	}
@@ -35,6 +37,23 @@ type jivaOrchestrator struct {
 	// Orthogonal concerns and their management w.r.t jiva storage
 	// is done via aspect
 	aspect volume.VolumePluginAspect
+}
+
+// Info tries to fetch details of a jiva volume placed in an orchestrator
+func (jOrch *jivaOrchestrator) Info(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
+
+	orchestrator, err := jOrch.aspect.GetOrchProvider()
+	if err != nil {
+		return nil, err
+	}
+
+	storageOrchestrator, ok := orchestrator.StoragePlacements()
+
+	if !ok {
+		return nil, fmt.Errorf("Orchestrator '%s' does not provide storage services", orchestrator.Name())
+	}
+
+	return storageOrchestrator.StorageInfoReq(pvc)
 }
 
 // Provision tries to creates a jiva volume via an orchestrator

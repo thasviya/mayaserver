@@ -86,7 +86,7 @@ func newJivaStor(config io.Reader, aspect volume.VolumePluginAspect) (*jivaStor,
 	// TODO
 	// validations of the populated config structure
 
-	jivaOps, err := newJivaOpsProvider(aspect)
+	jivaOps, err := newJivaOrchestrator(aspect)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +109,15 @@ func (j *jivaStor) Name() string {
 	return JivaStorPluginName
 }
 
+// jivaStor supports provising information of a jiva volume
+// This is made possible by its jivaOps property
+//
+// NOTE:
+//    This is a contract implementation of volume.VolumeInterface
+func (j *jivaStor) Informer() (volume.Informer, bool) {
+	return j, true
+}
+
 // jivaStor supports provisioning
 // This is made possible by its jivaOps property
 //
@@ -125,6 +134,18 @@ func (j *jivaStor) Provisioner() (volume.Provisioner, bool) {
 //    This is a contract implementation of volume.VolumeInterface
 func (j *jivaStor) Deleter() (volume.Deleter, bool) {
 	return j, true
+}
+
+// jivaStor provides information on a volume via its jivaOps property.
+//
+// NOTE:
+//    This is a contract implementation of volume.Informer interface
+func (j *jivaStor) Info(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
+	// TODO
+	// Validations of input i.e. claim
+
+	// Delegate to its provider
+	return j.jivaOps.Info(pvc)
 }
 
 // jivaStor provisions a volume via its jivaOps property.

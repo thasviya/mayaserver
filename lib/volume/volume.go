@@ -11,7 +11,6 @@ import (
 
 // Volume represents an entity that is created by any
 // storage infrastructure provider.
-//type Volume interface {
 type VolumeInterface interface {
 	Name() string
 
@@ -22,6 +21,19 @@ type VolumeInterface interface {
 	// This is a builder for Deleter interface. Will return
 	// false if not supported.
 	Deleter() (Deleter, bool)
+
+	// This is a builder for Informer interface. Will return
+	// false if not supported.
+	Informer() (Informer, bool)
+}
+
+// Informer is an interface that can fetch details of the volume from
+// the storage infrastructure.
+type Informer interface {
+	// Info tries to fetch the details of a claim from the underlying storage
+	// system. This method returns PersistentVolume representing the
+	// already available storage resource.
+	Info(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 }
 
 // Provisioner is an interface that can create the volume as a new resource in

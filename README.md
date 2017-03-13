@@ -80,20 +80,141 @@ mentioned features, the WIP tag will be removed.
         storage: 3Gi
   ```
 
-- Volume Provisioning
+- Sample REST Calls
  
   ```bash
+  
+  # Provision
+  
   $ curl -k -H "Content-Type: application/yaml" \
     -XPOST -d"$(cat lib/mockit/sample_openebs_pvc.yaml)" \
     http://172.28.128.4:5656/latest/volumes/
-  ```
-  
-- Volume Deletion
-  
-  ```bash
-  $ curl http://172.28.128.4:5656/latest/volume/delete/ssdvol
-  ```
+    
+  {
+    "Allocs": null,
+    "Evals": [
+      {
+        "BlockedEval": "",
+        "CreateIndex": 1992,
+        "FailedTGAllocs": null,
+        "ID": "6ed438d2-    d7fe-7e51-91cc-034018405db4",
+        "JobID": "ssdvol",
+        "JobModifyIndex": 1991,
+        "ModifyIndex": 1992,
+        "NextEval": "",
+        "NodeID": "",
+        "NodeModifyIndex": 0,
+        "PreviousEval": "",
+        "Priority": 50,
+        "QueuedAllocations": null,
+        "Status": "pending",
+        "StatusDescription": "",
+        "TriggeredBy": "job-register",
+        "Type": "service",
+        "Wait": 0
+      }
+    ],
+    "Spec": {
+      "AccessModes": null,
+      "Capacity": null,
+      "ClaimRef": null,
+      "OpenEBS": {
+        "volumeID": ""
+      },
+      "PersistentVolumeReclaimPolicy": "",
+      "StorageClassName": ""
+    },
+    "Status": {
+      "Message": "",
+      "Phase": "",
+      "Reason": ""
+    },
+    "creationTimestamp": null,
+    "name": "ssdvol"
+  }
 
+
+  # Info
+  
+  $ curl http://172.28.128.4:5656/latest/volume/info/ssdvol
+  
+  {
+    "Allocs": null,
+    "Evals": null,
+    "Spec": {
+      "AccessModes": null,
+      "Capacity": null,
+      "ClaimRef": null,
+      "OpenEBS": {
+        "volumeID": ""
+      },
+      "PersistentVolumeReclaimPolicy": "",
+      "StorageClassName": ""
+    },
+    "Status": {
+      "Message": "",
+      "Phase": "",
+      "Reason": "pending"
+    },
+    "creationTimestamp": null,
+    "name": "ssdvol"
+  }
+
+
+  # Delete
+  
+  $ curl http://172.28.128.4:5656/latest/volume/delete/ssdvol
+  
+  {
+    "Allocs": null,
+    "Evals": [
+      {
+        "BlockedEval": "",
+        "CreateIndex": 2023,
+        "FailedTGAllocs": null,
+        "ID": "27d49622-3985-8fc9-08ac-1ed6cbd3eb3b",
+        "JobID": "ssdvol",
+        "JobModifyIndex": 2022,
+        "ModifyIndex": 2023,
+        "NextEval": "",
+        "NodeID": "",
+        "NodeModifyIndex": 0,
+        "PreviousEval": "",
+        "Priority": 50,
+        "QueuedAllocations": null,
+        "Status": "pending",
+        "StatusDescription": "",
+        "TriggeredBy": "job-deregister",
+        "Type": "service",
+        "Wait": 0
+      }
+    ],
+    "Spec": {
+      "AccessModes": null,
+      "Capacity": null,
+      "ClaimRef": null,
+      "OpenEBS": {
+        "volumeID": ""
+      },
+      "PersistentVolumeReclaimPolicy": "",
+      "StorageClassName": ""
+    },
+    "Status": {
+      "Message": "",
+      "Phase": "",
+      "Reason": ""
+    },
+    "creationTimestamp": null,
+    "name": "ssdvol"
+  }
+
+  # Info again
+  
+  $ curl http://172.28.128.4:5656/latest/volume/info/ssdvol
+
+  Unexpected response code: 404 (job not found)
+    
+  ```
 
 ## Troubleshoot
 

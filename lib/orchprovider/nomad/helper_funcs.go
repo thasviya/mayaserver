@@ -9,6 +9,20 @@ import (
 	"github.com/openebs/mayaserver/lib/api/v1"
 )
 
+// Get the job name from a persistent volume claim
+func PvcToJobName(pvc *v1.PersistentVolumeClaim) (string, error) {
+
+	if pvc == nil {
+		return "", fmt.Errorf("Nil persistent volume claim provided")
+	}
+
+	if pvc.Name == "" {
+		return "", fmt.Errorf("Missing name in persistent volume claim")
+	}
+
+	return pvc.Name, nil
+}
+
 // Transform a PersistentVolumeClaim type to Nomad job type
 func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 
@@ -227,8 +241,8 @@ func JobSummaryToPv(jobSummary *api.JobSummary) (*v1.PersistentVolume, error) {
 }
 
 // TODO
-// This transformation is a very crude approach currently.
-func JobEvalsToPv(submittedJob *api.Job, evals []*api.Evaluation) (*v1.PersistentVolume, error) {
+// Transform the evaluations of a job to a PersistentVolume
+func JobEvalsToPv(jobName string, evals []*api.Evaluation) (*v1.PersistentVolume, error) {
 
 	if evals == nil {
 		return nil, fmt.Errorf("Nil job evaluations provided")
@@ -242,7 +256,7 @@ func JobEvalsToPv(submittedJob *api.Job, evals []*api.Evaluation) (*v1.Persisten
 
 	pv := &v1.PersistentVolume{}
 	pv.Evals = pvEvals
-	pv.Name = *submittedJob.ID
+	pv.Name = jobName
 
 	return pv, nil
 }
@@ -260,4 +274,22 @@ func PvToJob(pv *v1.PersistentVolume) (*api.Job, error) {
 		// ID is same as Name currently
 		ID: helper.StringToPtr(pv.Name),
 	}, nil
+}
+
+// Transform a Nomad Job to a PersistentVolume
+func JobToPv(job *api.Job) (*v1.PersistentVolume, error) {
+	if job == nil {
+		return nil, fmt.Errorf("Nil job provided")
+	}
+
+	pv := &v1.PersistentVolume{}
+	pv.Name = *job.Name
+
+	pvs := v1.PersistentVolumeStatus{
+		Message: *job.StatusDescription,
+		Reason:  *job.Status,
+	}
+	pv.Status = pvs
+
+	return pv, nil
 }

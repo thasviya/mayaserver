@@ -114,6 +114,29 @@ func (n *NomadOrchestrator) StoragePlacements() (orchprovider.StoragePlacements,
 	return n, true
 }
 
+// StorageInfoReq is a contract method implementation of
+// orchprovider.StoragePlacements interface. In this implementation,
+// a resource details will be fetched from a Nomad deployment.
+//
+// NOTE:
+//    Nomad does not have persistent volume as its first class citizen.
+// Hence, this resource should exhibit storage characteristics. The validations
+// for this should have been done at the volume plugin implementation.
+func (n *NomadOrchestrator) StorageInfoReq(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
+
+	jobName, err := PvcToJobName(pvc)
+	if err != nil {
+		return nil, err
+	}
+
+	job, err := n.nStorApis.StorageInfo(jobName)
+	if err != nil {
+		return nil, err
+	}
+
+	return JobToPv(job)
+}
+
 // StoragePlacementReq is a contract method implementation of
 // orchprovider.StoragePlacements interface. In this implementation,
 // a resource will be created at a Nomad deployment.
@@ -149,9 +172,9 @@ func (n *NomadOrchestrator) StoragePlacementReq(pvc *v1.PersistentVolumeClaim) (
 		return nil, err
 	}
 
-	glog.V(2).Infof("Volume '%s' was placed for provisioning with eval '%v'", job.Name, eval)
+	glog.V(2).Infof("Volume '%s' was placed for provisioning with eval '%v'", *job.Name, eval)
 
-	return JobEvalsToPv(job, []*api.Evaluation{eval})
+	return JobEvalsToPv(*job.Name, []*api.Evaluation{eval})
 }
 
 // StorageRemovalReq is a contract method implementation of
@@ -177,5 +200,5 @@ func (n *NomadOrchestrator) StorageRemovalReq(pv *v1.PersistentVolume) (*v1.Pers
 
 	glog.V(2).Infof("Volume '%s' was placed for removal with eval '%v'", pv.Name, eval)
 
-	return JobEvalsToPv(job, []*api.Evaluation{eval})
+	return JobEvalsToPv(*job.Name, []*api.Evaluation{eval})
 }

@@ -59,6 +59,9 @@ type StorageApis interface {
 
 	// Delete makes a request to Nomad to delete the storage resource
 	DeleteStorage(job *api.Job) (*api.Evaluation, error)
+
+	// Info provides the storage information w.r.t the provided job name
+	StorageInfo(jobName string) (*api.Job, error)
 }
 
 // nomadStorageApi is an implementation of the nomad.StorageApis interface
@@ -68,7 +71,35 @@ type nomadStorageApi struct {
 	nApiClient NomadClient
 }
 
-// Create & submit a job spec that creates a resource in Nomad cluster.
+// Fetch info about a particular resource in Nomad cluster.
+//
+// NOTE:
+//    Nomad does not have persistent volume as its first class citizen.
+// Hence, this resource should exhibit storage characteristics. The validations
+// for this should have been done at the volume plugin implementation.
+func (nsApi *nomadStorageApi) StorageInfo(jobName string) (*api.Job, error) {
+
+	nApiClient := nsApi.nApiClient
+	if nApiClient == nil {
+		return nil, fmt.Errorf("nomad api client not initialized")
+	}
+
+	nApiHttpClient, err := nApiClient.Http()
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch the job info
+	job, _, err := nApiHttpClient.Jobs().Info(jobName, &api.QueryOptions{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return job, nil
+}
+
+// Creates a resource in Nomad cluster.
 //
 // NOTE:
 //    Nomad does not have persistent volume as its first class citizen.
@@ -103,7 +134,7 @@ func (nsApi *nomadStorageApi) CreateStorage(job *api.Job) (*api.Evaluation, erro
 	return eval, nil
 }
 
-// Create & submit a job spec that removes a resource in Nomad cluster.
+// Remove a resource in Nomad cluster.
 //
 // NOTE:
 //    Nomad does not have persistent volume as its first class citizen.
@@ -121,7 +152,7 @@ func (nsApi *nomadStorageApi) DeleteStorage(job *api.Job) (*api.Evaluation, erro
 		return nil, err
 	}
 
-	evalID, _, err := nApiHttpClient.Jobs().Deregister(*job.ID, &api.WriteOptions{})
+	evalID, _, err := nApiHttpClient.Jobs().Deregister(*job.Name, &api.WriteOptions{})
 
 	if err != nil {
 		return nil, err

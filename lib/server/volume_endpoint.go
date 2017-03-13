@@ -45,7 +45,9 @@ func (s *HTTPServer) VolumeSpecificRequest(resp http.ResponseWriter, req *http.R
 	case strings.Contains(path, "/delete/"):
 		volName := strings.TrimPrefix(path, "/delete/")
 		return s.volumeDelete(resp, req, volName)
-
+	case strings.Contains(path, "/info/"):
+		volName := strings.TrimPrefix(path, "/info/")
+		return s.volumeInfo(resp, req, volName)
 	default:
 		return nil, CodedError(405, ErrInvalidMethod)
 	}
@@ -130,4 +132,37 @@ func (s *HTTPServer) volumeDelete(resp http.ResponseWriter, req *http.Request, v
 	}
 
 	return dPV, nil
+}
+
+func (s *HTTPServer) volumeInfo(resp http.ResponseWriter, req *http.Request, volName string) (interface{}, error) {
+
+	if volName == "" {
+		return nil, fmt.Errorf("Volume name missing")
+	}
+
+	// TODO
+	// Get the type of volume plugin from:
+	//  1. http request parameters,
+	//  2. Mayaconfig etc.
+	// We shall hardcode to jiva now
+	volPlugName := jiva.JivaStorPluginName
+
+	// Get jiva storage plugin
+	jivaStor, err := s.GetVolumePlugin(volPlugName)
+
+	jivaInfo, ok := jivaStor.Informer()
+	if !ok {
+		return nil, fmt.Errorf("Volume information is not supported by '%s'", volPlugName)
+	}
+
+	pvc := &v1.PersistentVolumeClaim{}
+	pvc.Name = volName
+
+	info, err := jivaInfo.Info(pvc)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return info, nil
 }
