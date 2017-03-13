@@ -144,12 +144,14 @@ func (n *NomadOrchestrator) StoragePlacementReq(pvc *v1.PersistentVolumeClaim) (
 		return nil, err
 	}
 
-	evals, err := n.nStorApis.CreateStorage(job)
+	eval, err := n.nStorApis.CreateStorage(job)
 	if err != nil {
 		return nil, err
 	}
 
-	return JobEvalsToPv(job, evals)
+	glog.V(2).Infof("Volume '%s' was placed for provisioning with eval '%v'", job.Name, eval)
+
+	return JobEvalsToPv(job, []*api.Evaluation{eval})
 }
 
 // StorageRemovalReq is a contract method implementation of
@@ -173,7 +175,7 @@ func (n *NomadOrchestrator) StorageRemovalReq(pv *v1.PersistentVolume) (*v1.Pers
 		return nil, err
 	}
 
-	glog.Infof("Volume removal req with eval '%s' placed for pv '%s'", eval.ID, pv.Name)
+	glog.V(2).Infof("Volume '%s' was placed for removal with eval '%v'", pv.Name, eval)
 
 	return JobEvalsToPv(job, []*api.Evaluation{eval})
 }
