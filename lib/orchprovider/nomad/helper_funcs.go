@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/nomad/api"
 	"github.com/hashicorp/nomad/helper"
+	"github.com/hashicorp/nomad/nomad/structs"
 	"github.com/openebs/mayaserver/lib/api/v1"
 )
 
@@ -115,6 +116,12 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 		Priority:    helper.IntToPtr(50),
 		Constraints: []*api.Constraint{
 			api.NewConstraint("${attr.kernel.name}", "=", "linux"),
+		},
+		// Meta information will be used to pass on the metadata from
+		// nomad to clients of mayaserver.
+		Meta: map[string]string{
+			"targetportal": jivaFeIP + ":3260",
+			"iqn":          "iqn.2016-09.com.openebs.jiva:" + jivaVolName,
 		},
 		TaskGroups: []*api.TaskGroup{
 			// jiva frontend
@@ -290,6 +297,10 @@ func JobToPv(job *api.Job) (*v1.PersistentVolume, error) {
 		Reason:  *job.Status,
 	}
 	pv.Status = pvs
+
+	if *job.Status == structs.JobStatusRunning {
+		pv.Annotations = job.Meta
+	}
 
 	return pv, nil
 }
