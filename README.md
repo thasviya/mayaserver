@@ -18,7 +18,7 @@ curve.
 > This is very much a work in progress. Once the code base executes few of the 
 mentioned features, the WIP tag will be removed.
 
-## Development of Mayaserver
+## Setting up Mayaserver locally
 
 > These are some of the steps to start off with development.
 
@@ -34,7 +34,7 @@ mentioned features, the WIP tag will be removed.
   - sudo nohup mayaserver up -bind=172.28.128.4 &>mserver.log &
 ```
 
-### Troubleshooting development environment
+### Troubleshooting while local setup
 
 ```bash
 - `make init` is a time taking operation
