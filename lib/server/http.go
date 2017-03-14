@@ -3,7 +3,6 @@ package server
 // This is an adaptation of Hashicorp's Nomad library.
 import (
 	"bytes"
-
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/NYTimes/gziphandler"
@@ -228,6 +228,33 @@ func (s *HTTPServer) wrap(handler func(resp http.ResponseWriter, req *http.Reque
 		}
 	}
 	return f
+}
+
+// Get the value of Content-Type that is set in http request header
+func getContentType(req *http.Request) (string, error) {
+
+	if req.Header == nil {
+		return "", fmt.Errorf("Request does not have any header")
+	}
+
+	return req.Header.Get("Content-Type"), nil
+}
+
+// Decode the request body to appropriate structure based on content
+// type
+func decodeBody(req *http.Request, out interface{}) error {
+
+	cType, err := getContentType(req)
+	if err != nil {
+		return err
+	}
+
+	if strings.Contains(cType, "yaml") {
+		return decodeYamlBody(req, out)
+	}
+
+	// default is assumed to be json content
+	return decodeJsonBody(req, out)
 }
 
 // decodeJsonBody is used to decode a JSON request body

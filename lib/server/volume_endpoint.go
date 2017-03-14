@@ -57,7 +57,7 @@ func (s *HTTPServer) volumeUpdate(resp http.ResponseWriter, req *http.Request, v
 
 	pvc := v1.PersistentVolumeClaim{}
 
-	if err := decodeYamlBody(req, &pvc); err != nil {
+	if err := decodeBody(req, &pvc); err != nil {
 		return nil, CodedError(400, err.Error())
 	}
 

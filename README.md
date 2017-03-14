@@ -86,6 +86,10 @@ mentioned features, the WIP tag will be removed.
         storage: 3Gi
   ```
 
+  - NOTE - JSON based specs is also supported
+  - Refer the sample json specs at `lib/mockit/sample_openebs_pvc.json`
+  - Both json & yaml specs are supported when request's Content-Type is `application/yaml`
+
 - Sample REST Calls
  
   ```bash
