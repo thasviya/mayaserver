@@ -2,6 +2,7 @@ package nomad
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/hashicorp/nomad/api"
@@ -236,34 +237,44 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 // to be orchestrated by Nomad
 //  3. This transformer instance needs to be injected from
 // volume plugin to orchestrator, in a generic way.
-func JobSummaryToPv(jobSummary *api.JobSummary) (*v1.PersistentVolume, error) {
-
-	if jobSummary == nil {
-		return nil, fmt.Errorf("Nil nomad job summary provided")
-	}
-
-	// TODO
-	// Needs to be filled up
-	return &v1.PersistentVolume{}, nil
-}
+//func JobSummaryToPv(jobSummary *api.JobSummary) (*v1.PersistentVolume, error) {
+//
+//	if jobSummary == nil {
+//		return nil, fmt.Errorf("Nil nomad job summary provided")
+//	}
+//
+// TODO
+// Needs to be filled up
+//	return &v1.PersistentVolume{}, nil
+//}
 
 // TODO
-// Transform the evaluations of a job to a PersistentVolume
-func JobEvalsToPv(jobName string, evals []*api.Evaluation) (*v1.PersistentVolume, error) {
+// Transform the evaluation of a job to a PersistentVolume
+func JobEvalToPv(jobName string, eval *api.Evaluation) (*v1.PersistentVolume, error) {
 
-	if evals == nil {
-		return nil, fmt.Errorf("Nil job evaluations provided")
-	}
-
-	pvEvals := make([]api.Evaluation, len(evals))
-
-	for i, eval := range evals {
-		pvEvals[i] = *eval
+	if eval == nil {
+		return nil, fmt.Errorf("Nil job evaluation provided")
 	}
 
 	pv := &v1.PersistentVolume{}
-	pv.Evals = pvEvals
 	pv.Name = jobName
+
+	evalProps := map[string]string{
+		"evalpriority":    strconv.Itoa(eval.Priority),
+		"evaltype":        eval.Type,
+		"evaltrigger":     eval.TriggeredBy,
+		"evaljob":         eval.JobID,
+		"evalstatus":      eval.Status,
+		"evalstatusdesc":  eval.StatusDescription,
+		"evalblockedeval": eval.BlockedEval,
+	}
+	pv.Annotations = evalProps
+
+	pvs := v1.PersistentVolumeStatus{
+		Message: eval.StatusDescription,
+		Reason:  eval.Status,
+	}
+	pv.Status = pvs
 
 	return pv, nil
 }

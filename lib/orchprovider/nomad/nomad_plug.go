@@ -9,7 +9,7 @@ import (
 	"io"
 
 	"github.com/golang/glog"
-	"github.com/hashicorp/nomad/api"
+	//"github.com/hashicorp/nomad/api"
 	"github.com/openebs/mayaserver/lib/api/v1"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 )
@@ -174,7 +174,7 @@ func (n *NomadOrchestrator) StoragePlacementReq(pvc *v1.PersistentVolumeClaim) (
 
 	glog.V(2).Infof("Volume '%s' was placed for provisioning with eval '%v'", *job.Name, eval)
 
-	return JobEvalsToPv(*job.Name, []*api.Evaluation{eval})
+	return JobEvalToPv(*job.Name, eval)
 }
 
 // StorageRemovalReq is a contract method implementation of
@@ -200,5 +200,5 @@ func (n *NomadOrchestrator) StorageRemovalReq(pv *v1.PersistentVolume) (*v1.Pers
 
 	glog.V(2).Infof("Volume '%s' was placed for removal with eval '%v'", pv.Name, eval)
 
-	return JobEvalsToPv(*job.Name, []*api.Evaluation{eval})
+	return JobEvalToPv(*job.Name, eval)
 }
