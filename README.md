@@ -20,7 +20,9 @@ mentioned features, the WIP tag will be removed.
 
 ## Setting up Mayaserver locally
 
-> These are some of the steps to start off with development.
+> These are some of the steps to start off with development & running of Mayaserver
+in one's laptop. It assumes use of Linux as laptop's OS. In addition, the laptop
+should have Virtual Box & Vagrant installed.
 
 ```bash
 - git clone https://github.com/openebs/mayaserver.git
