@@ -36,7 +36,7 @@ should have Virtual Box & Vagrant installed.
   - sudo nohup mayaserver up -bind=172.28.128.4 &>mserver.log &
 ```
 
-### Troubleshooting while local setup
+### Troubleshooting during local setup
 
 ```bash
 - `make init` is a time taking operation
