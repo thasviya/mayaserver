@@ -240,7 +240,7 @@ mentioned features, the WIP tag will be removed.
 
 - How to get the iscsi portal & iqn information of a iscsi based jiva volume ?
   - Info based REST API will fetch these information.
-  - However, these will not be fetched in case of any error.
+  - However, these will not be fetched in case of any `error` or `in-progress`/`pending` status.
 
 ## Licensing
 
