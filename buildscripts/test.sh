@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 set -e
 
+if [ -z "${CTLNAME}" ]; 
+then
+    CTLNAME="m-apiserver"
+fi
+
 # Create a temp dir and clean it up on exit
-TEMPDIR=`mktemp -d -t mayaserver-test.XXX`
+TEMPDIR=`mktemp -d -t m-apiserver-test.XXX`
 trap "rm -rf $TEMPDIR" EXIT HUP INT QUIT TERM
 
 # Build the Maya binary for the tests
-echo "--> Building mayaserver"
-go build -o $TEMPDIR/mayaserver || exit 1
+echo "--> Building ${CTLNAME} ..."
+go build -o $TEMPDIR/m-apiserver || exit 1
 
 # Run the tests
 echo "--> Running tests"

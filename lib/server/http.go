@@ -37,12 +37,12 @@ var (
 	jsonHandlePretty = &codec.JsonHandle{Indent: 4}
 )
 
-// HTTPServer is used to wrap Maya server and expose it over an HTTP interface
+// HTTPServer is used to wrap maya api server and expose it over an HTTP interface
 type HTTPServer struct {
 	// TODO
-	// Convert MayaServer as an interface with some public contracts
+	// Convert MayaApiServer as an interface with some public contracts
 	// This interface can be embedded in HTTPServer struct
-	maya *MayaServer
+	maya *MayaApiServer
 
 	mux      *http.ServeMux
 	listener net.Listener
@@ -51,7 +51,7 @@ type HTTPServer struct {
 }
 
 // NewHTTPServer starts new HTTP server over Maya server
-func NewHTTPServer(maya *MayaServer, config *config.MayaConfig, logOutput io.Writer) (*HTTPServer, error) {
+func NewHTTPServer(maya *MayaApiServer, config *config.MayaConfig, logOutput io.Writer) (*HTTPServer, error) {
 	// Start the listener
 	lnAddr, err := net.ResolveTCPAddr("tcp", config.NormalizedAddrs.HTTP)
 	if err != nil {

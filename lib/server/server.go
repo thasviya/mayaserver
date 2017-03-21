@@ -15,9 +15,9 @@ import (
 	"github.com/openebs/mayaserver/lib/volume/jiva"
 )
 
-// MayaServer is a long running stateless daemon that runs
+// MayaApiServer is a long running stateless daemon that runs
 // at openebs maya master(s)
-type MayaServer struct {
+type MayaApiServer struct {
 	config    *config.MayaConfig
 	logger    *log.Logger
 	logOutput io.Writer
@@ -27,10 +27,11 @@ type MayaServer struct {
 	shutdownLock sync.Mutex
 }
 
-// NewMayaServer is used to create a new maya server
+// NewMayaApiServer is used to create a new maya api server
 // with the given configuration
-func NewMayaServer(config *config.MayaConfig, logOutput io.Writer) (*MayaServer, error) {
-	ms := &MayaServer{
+func NewMayaApiServer(config *config.MayaConfig, logOutput io.Writer) (*MayaApiServer, error) {
+
+	ms := &MayaApiServer{
 		config:     config,
 		logger:     log.New(logOutput, "", log.LstdFlags|log.Lmicroseconds),
 		logOutput:  logOutput,
@@ -66,7 +67,7 @@ func NewMayaServer(config *config.MayaConfig, logOutput io.Writer) (*MayaServer,
 // instance with its `default orchestrator` & `default region` of the
 // orchestrator. User initiated requests requiring specific variants should be
 // initialized at runtime.
-func (ms *MayaServer) BootstrapPlugins() error {
+func (ms *MayaApiServer) BootstrapPlugins() error {
 
 	// TODO
 	// Use MayaConfig
@@ -132,26 +133,29 @@ func (ms *MayaServer) BootstrapPlugins() error {
 }
 
 // Shutdown is used to terminate MayaServer.
-func (ms *MayaServer) Shutdown() error {
+func (ms *MayaApiServer) Shutdown() error {
+
 	ms.shutdownLock.Lock()
 	defer ms.shutdownLock.Unlock()
 
-	ms.logger.Println("[INFO] mayaserver: requesting shutdown")
+	ms.logger.Println("[INFO] maya api server: requesting shutdown")
 
 	if ms.shutdown {
 		return nil
 	}
 
-	ms.logger.Println("[INFO] mayaserver: shutdown complete")
+	ms.logger.Println("[INFO] maya api server: shutdown complete")
 	ms.shutdown = true
+
 	close(ms.shutdownCh)
+
 	return nil
 }
 
 // Leave is used gracefully exit.
-func (ms *MayaServer) Leave() error {
+func (ms *MayaApiServer) Leave() error {
 
-	ms.logger.Println("[INFO] mayaserver: exiting gracefully")
+	ms.logger.Println("[INFO] maya api server: exiting gracefully")
 
 	// Nothing as of now
 	return nil

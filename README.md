@@ -1,6 +1,6 @@
 # Maya API Server
 
-> Maya exposes its APIs here
+> OpenEBS exposes its APIs here
 
 A service exposing `Kubernetes` like APIs.
 
@@ -12,11 +12,11 @@ Maya server adapts itself like Kubernetes server. This makes it super simple
 for operators and admins to get into the usage of OpenEBS without much of learning
 curve.
 
-## Setting up Mayaserver locally
+## Setting up maya api server locally
 
-> These are some of the steps to start off with development & running of Mayaserver
-in one's laptop. It assumes use of Linux as laptop's OS. In addition, the laptop
-should have Virtual Box & Vagrant installed.
+> These are some of the steps to start off with development & running of maya api 
+server in one's laptop. It assumes use of Linux as laptop's OS. In addition, the 
+laptop should have Virtual Box & Vagrant installed.
 
 ```bash
 - git clone https://github.com/openebs/mayaserver.git
@@ -27,7 +27,7 @@ should have Virtual Box & Vagrant installed.
   - make init
   - make
   - make bin
-  - sudo nohup mayaserver up -bind=172.28.128.4 &>mserver.log &
+  - sudo nohup m-apiserver up -bind=172.28.128.4 &>mapiserver.log &
 ```
 
 ### Troubleshooting during local setup
@@ -40,9 +40,9 @@ should have Virtual Box & Vagrant installed.
     - use `make sync` than `make init`
 ```
 
-## Mayaserver's REST APIs
+## Maya api server's exposed REST APIs
 
-- `NOTE: Use the bind address on which your Mayaserver is running`
+- `NOTE: Use the bind address on which your maya api server is running`
 
 - Get InstanceID
 
@@ -58,11 +58,11 @@ should have Virtual Box & Vagrant installed.
     - `/etc/mayaserver/orchprovider/nomad_global.INI`
     - `/etc/mayaserver/orchprovider/nomad_us-east-1.INI`
   - Each region based .INI file can be categorised into multiple datacenters
-  - Mayaserver works with following defaults:
+  - Maya api server works with following defaults:
     - `Nomad` as the default orchestrator &
     - `global` as Nomad's default region &
     - `dc1` as Nomad's default datacenter
-  - Below is a sample .INI file that is valid for `Nomad` as mayaserver's orchestrator
+  - Below is a sample .INI file that is valid for `Nomad` as maya api server's orchestrator
 
   ```ini
   [datacenter "dc1"]
@@ -199,19 +199,19 @@ should have Virtual Box & Vagrant installed.
 
 ## Troubleshooting
 
-- Verify the presence of Mayaserver binary
-  - which mayaserver
-  - mayaserver -version
+- Verify the presence of maya api server binary
+  - which m-apiserver
+  - m-apiserver version
 
-- Verify the presence of Mayaserver's orchestrator's .INI file(s)
+- Verify the presence of maya api server's orchestrator's .INI file(s)
   - i.e. /etc/mayaserver/orchprovider/nomad_global.INI
   - `global` is the name of the region
 
-- Verify the contents of Mayaserver's orchestrator's .INI file
+- Verify the contents of maya api server's orchestrator's .INI file
 
-- Verify if Mayaserver is running as a process
+- Verify if maya api server is running as a process
   - Watch out for the process with 5656 as the port
-  - `5656` is the default tcp port on which Mayaserver's services are exposed
+  - `5656` is the default tcp port on which maya api server's services are exposed
 
   ```bash
   # Use netstat command
@@ -231,7 +231,7 @@ should have Virtual Box & Vagrant installed.
   Active Internet connections (only servers)
   Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
   tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      1258/sshd
-  tcp        0      0 127.0.0.1:5656          0.0.0.0:*               LISTEN      3078/mayaserver 
+  tcp        0      0 127.0.0.1:5656          0.0.0.0:*               LISTEN      3078/m-apiserver 
   tcp6       0      0 :::22                   :::*                    LISTEN      1258/sshd
   ```
 
@@ -243,6 +243,6 @@ should have Virtual Box & Vagrant installed.
 
 ## Licensing
 
-Mayaserver is completely open source and bears an Apache license. Mayaserver's
-core components and designs are a derivative of other open sourced libraries 
+Maya api server is completely open source and bears an Apache license. Maya api 
+server's core components and designs are a derivative of other open sourced libraries 
 like Nomad and Kubernetes.

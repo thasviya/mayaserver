@@ -2,16 +2,12 @@ package server
 
 import (
 	"fmt"
-	//"io"
 	"io/ioutil"
 	"net"
 	"os"
 	"testing"
-	//"time"
 
 	"github.com/openebs/mayaserver/lib/config"
-	//"github.com/openebs/mayaserver/lib/orchprovider"
-	//"github.com/openebs/mayaserver/lib/orchprovider/nomad"
 )
 
 func getPort() int {
@@ -29,14 +25,14 @@ func getPort() int {
 }
 
 func tmpDir(t testing.TB) string {
-	dir, err := ioutil.TempDir("", "mayaserver")
+	dir, err := ioutil.TempDir("", "mapiserver")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	return dir
 }
 
-func makeMayaServer(t testing.TB, fnmc func(*config.MayaConfig)) (string, *MayaServer) {
+func makeMayaServer(t testing.TB, fnmc func(*config.MayaConfig)) (string, *MayaApiServer) {
 	dir := tmpDir(t)
 
 	// Customize the server configuration
@@ -60,7 +56,7 @@ func makeMayaServer(t testing.TB, fnmc func(*config.MayaConfig)) (string, *MayaS
 		t.Fatalf("error normalizing config: %v", err)
 	}
 
-	maya, err := NewMayaServer(conf, os.Stderr)
+	maya, err := NewMayaApiServer(conf, os.Stderr)
 	if err != nil {
 		os.RemoveAll(dir)
 		t.Fatalf("err: %v", err)

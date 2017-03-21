@@ -42,17 +42,17 @@ fi
 
 if [ -z "${CTLNAME}" ]; 
 then
-    CTLNAME="mayaserver"
+    CTLNAME="m-apiserver"
 fi
 
 # If its dev mode, only build for ourself
-if [[ "${MAYASERVER_DEV}" ]]; then
+if [[ "${M_APISERVER_DEV}" ]]; then
     XC_OS=$(go env GOOS)
     XC_ARCH=$(go env GOARCH)
 fi
 
 # Build!
-echo "==> Building..."
+echo "==> Building ${CTLNAME} ..."
 
 gox \
     -os="${XC_OS}" \
@@ -85,7 +85,7 @@ for F in $(find ${DEV_PLATFORM} -mindepth 1 -maxdepth 1 -type f); do
     cp ${F} ${MAIN_GOPATH}/bin/
 done
 
-if [[ "x${MAYASERVER_DEV}" == "x" ]]; then
+if [[ "x${M_APISERVER_DEV}" == "x" ]]; then
     # Zip and copy to the dist dir
     echo "==> Packaging..."
     for PLATFORM in $(find ./pkg -mindepth 1 -maxdepth 1 -type d); do

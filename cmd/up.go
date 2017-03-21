@@ -45,7 +45,7 @@ type UpCommand struct {
 	// Check if both maya & httpServer instances are required ?
 	// Can httpServer or maya embed one of the other ?
 	// Need to take care of shuting down & graceful exit scenarios !!
-	maya       *server.MayaServer
+	maya       *server.MayaApiServer
 	httpServer *server.HTTPServer
 	logFilter  *logutils.LevelFilter
 	logOutput  io.Writer
@@ -65,9 +65,7 @@ func (c *UpCommand) readMayaConfig() *config.MayaConfig {
 	// options
 	flags.Var((*flaghelper.StringFlag)(&configPath), "config", "config")
 	flags.StringVar(&cmdConfig.BindAddr, "bind", "", "")
-	flags.StringVar(&cmdConfig.Region, "region", "", "")
 	flags.StringVar(&cmdConfig.DataDir, "data-dir", "", "")
-	flags.StringVar(&cmdConfig.Datacenter, "dc", "", "")
 	flags.StringVar(&cmdConfig.LogLevel, "log-level", "", "")
 
 	if err := flags.Parse(c.args); err != nil {
@@ -152,7 +150,7 @@ func (c *UpCommand) setupLoggers(mconfig *config.MayaConfig) (*loghelper.Writer,
 	// Check if syslog is enabled
 	var syslog io.Writer
 	if mconfig.EnableSyslog {
-		l, err := gsyslog.NewLogger(gsyslog.LOG_NOTICE, mconfig.SyslogFacility, "mayaserver")
+		l, err := gsyslog.NewLogger(gsyslog.LOG_NOTICE, mconfig.SyslogFacility, "mapiserver")
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf("Syslog setup failed: %v", err))
 			return nil, nil, nil
@@ -175,12 +173,12 @@ func (c *UpCommand) setupLoggers(mconfig *config.MayaConfig) (*loghelper.Writer,
 
 // setupMayaServer is used to start Maya server
 func (c *UpCommand) setupMayaServer(mconfig *config.MayaConfig, logOutput io.Writer) error {
-	c.Ui.Output("Starting Maya server ...")
+	c.Ui.Output("Starting maya api server ...")
 
-	// Setup maya service i.e. mayaserver
-	maya, err := server.NewMayaServer(mconfig, logOutput)
+	// Setup maya service i.e. maya api server
+	maya, err := server.NewMayaApiServer(mconfig, logOutput)
 	if err != nil {
-		c.Ui.Error(fmt.Sprintf("Error starting Maya server: %s", err))
+		c.Ui.Error(fmt.Sprintf("Error starting maya api server: %s", err))
 		return err
 	}
 
@@ -255,7 +253,7 @@ func (c *UpCommand) Run(args []string) int {
 
 	// Maya server configuration output
 	padding := 18
-	c.Ui.Output("Maya server configuration:\n")
+	c.Ui.Output("Maya api server configuration:\n")
 	for _, k := range infoKeys {
 		c.Ui.Info(fmt.Sprintf(
 			"%s%s: %s",
@@ -266,7 +264,7 @@ func (c *UpCommand) Run(args []string) int {
 	c.Ui.Output("")
 
 	// Output the header that the server has started
-	c.Ui.Output("Maya server started! Log data will stream in below:\n")
+	c.Ui.Output("Maya api server started! Log data will stream in below:\n")
 
 	// Enable log streaming
 	logGate.Flush()
@@ -320,7 +318,7 @@ WAIT:
 
 	// Attempt a graceful leave
 	gracefulCh := make(chan struct{})
-	c.Ui.Output("Gracefully shutting Maya server...")
+	c.Ui.Output("Gracefully shutting maya api server...")
 	go func() {
 		if err := c.maya.Leave(); err != nil {
 			c.Ui.Error(fmt.Sprintf("Error: %s", err))
@@ -347,7 +345,7 @@ WAIT:
 // process
 func (c *UpCommand) handleReload(mconfig *config.MayaConfig) *config.MayaConfig {
 
-	c.Ui.Output("Reloading Maya server configuration...")
+	c.Ui.Output("Reloading maya api server configuration...")
 
 	newConf := c.readMayaConfig()
 	if newConf == nil {
@@ -372,16 +370,16 @@ func (c *UpCommand) handleReload(mconfig *config.MayaConfig) *config.MayaConfig 
 }
 
 func (c *UpCommand) Synopsis() string {
-	return "Runs Maya server"
+	return "Starts maya api server"
 }
 
 func (c *UpCommand) Help() string {
 	helpText := `
-Usage: mayaserver up [options]
+Usage: m-apiserver up [options]
 
-  Starts Maya server and runs until an interrupt is received.
+  Starts maya api server and runs until an interrupt is received.
 
-  The Maya server's configuration primarily comes from the config
+  The maya api server's configuration primarily comes from the config
   files used, but a subset of the options may also be passed directly
   as CLI arguments, listed below.
 
@@ -394,7 +392,7 @@ General Options :
 
   -config=<path>
     The path to either a single config file or a directory of config
-    files to use for configuring Maya server. This option may be
+    files to use for configuring maya api server. This option may be
     specified multiple times. If multiple config files are used, the
     values from each will be merged together. During merging, values
     from files found later in the list are merged over values from
@@ -406,12 +404,8 @@ General Options :
     downloaded artifacts used by drivers. On server nodes, the data
     dir is also used to store the replicated log.
 
-  -dc=<datacenter>
-    The name of the datacenter this server is a member of. By
-    default this is set to "dc1".
-
   -log-level=<level>
-    Specify the verbosity level of Maya server's logs. Valid values include
+    Specify the verbosity level of maya api server's logs. Valid values include
     DEBUG, INFO, and WARN, in decreasing order of verbosity. The
     default is INFO.
 
@@ -419,10 +413,6 @@ General Options :
     The name of the local agent. This name is used to identify the node
     in the cluster. The name must be unique per region. The default is
     the current hostname of the machine.
-
-  -region=<region>
-    Name of the region the Maya server will be a member of. By default
-    this value is set to "global".
  `
 	return strings.TrimSpace(helpText)
 }

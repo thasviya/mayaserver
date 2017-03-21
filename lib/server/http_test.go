@@ -21,7 +21,7 @@ import (
 type TestServer struct {
 	T      testing.TB
 	Dir    string
-	Maya   *MayaServer
+	Maya   *MayaApiServer
 	Server *HTTPServer
 }
 

@@ -17,13 +17,13 @@ EXTERNAL_TOOLS=\
 # list only our .go files i.e. exlcudes any .go files from the vendor directory
 GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
-# Specify the name for the maya server binary
-CTLNAME=mayaserver
+# Specify the name for the maya api server binary
+CTLNAME=m-apiserver
 
 all: test
 
 dev: format
-	@CTLNAME=${CTLNAME} MAYASERVER_DEV=1 sh -c "'$(PWD)/buildscripts/build.sh'"
+	@CTLNAME=${CTLNAME} M_APISERVER_DEV=1 sh -c "'$(PWD)/buildscripts/build.sh'"
 
 bin:
 	@CTLNAME=${CTLNAME} sh -c "'$(PWD)/buildscripts/build.sh'"
