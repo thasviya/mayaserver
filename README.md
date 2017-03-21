@@ -43,6 +43,8 @@ laptop should have Virtual Box & Vagrant installed.
   - https://github.com/openebs/mayaserver/releases/download/0.0.6/mayaserver-linux_386.zip
 - Extract the m-apiserver binary from above .zip file & put it at /usr/local/bin/
 - Set appropriate user groups & permissions
+- Start maya api server as a long running daemon
+  - sudo nohup m-apiserver up -bind=<IP_Addr> &>mapiserver.log &
 ```
 
 ## Use Cases
