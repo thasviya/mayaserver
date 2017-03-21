@@ -49,7 +49,7 @@ laptop should have Virtual Box & Vagrant installed.
 
 ## Use Cases
 
-### Serving EBS compatibility
+### Provisioning OpenEBS Volumes K8s way
 
 Maya api server has some similarity with Kubernetes with respect to latter's
 volume provisioning methods. This makes it super simple for operators and admins
