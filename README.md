@@ -2,15 +2,15 @@
 
 > OpenEBS exposes its APIs here
 
-A service exposing `Kubernetes` like APIs.
+A service exposing `Kubernetes` like volume APIs.
 
 ## Use Cases
 
 ### Serving EBS compatibility
 
-Maya server adapts itself like Kubernetes server. This makes it super simple
-for operators and admins to get into the usage of OpenEBS without much of learning
-curve.
+Maya api server has some similarity with Kubernetes with respect to latter's
+volume provisioning methods. This makes it super simple for operators and admins
+to get into the usage of OpenEBS without much of learning curve.
 
 ## Setting up maya api server locally
 
