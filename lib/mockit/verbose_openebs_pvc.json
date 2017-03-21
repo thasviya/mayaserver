@@ -23,7 +23,7 @@
      ],
     "resources": {
       "requests": {
-        "storage": "3Gi"
+        "storage": "3G"
       }
     }
   }

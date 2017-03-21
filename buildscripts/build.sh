@@ -27,7 +27,8 @@ XC_EXCLUDE=${XC_EXCLUDE:-"!darwin/arm !darwin/386"}
 # Delete the old dir
 echo "==> Removing old directory..."
 rm -f bin/*
-rm -rf pkg/*
+rm -rf pkg/linux_*/*
+rm -rf pkg/*.zip
 mkdir -p bin/
 
 # Fetch the tags before using git rev-list --tags

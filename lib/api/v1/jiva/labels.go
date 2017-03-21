@@ -5,6 +5,8 @@ import (
 	v1nomad "github.com/openebs/mayaserver/lib/api/v1/nomad"
 )
 
+// These label can be used in the persistent volume claims to specify
+// exact requirements.
 type JivaLbl string
 
 const (
@@ -15,6 +17,11 @@ const (
 	JivaBackEndAllIPsLbl  JivaLbl = "be.jiva.volume.openebs.io/all-ips"
 	JivaFrontEndCountLbl  JivaLbl = "fe.jiva.volume.openebs.io/count"
 	JivaBackEndCountLbl   JivaLbl = "be.jiva.volume.openebs.io/count"
+)
+
+const (
+	JivaFrontEndVolSizeLbl v1.ResourceName = "fe.jiva.volume.openebs.io/vol-size"
+	JivaBackEndVolSizeLbl  v1.ResourceName = "be.jiva.volume.openebs.io/vol-size"
 )
 
 const (

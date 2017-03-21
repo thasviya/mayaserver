@@ -14,6 +14,7 @@ import (
 	v1jiva "github.com/openebs/mayaserver/lib/api/v1/jiva"
 	"github.com/openebs/mayaserver/lib/nethelper"
 	"github.com/openebs/mayaserver/lib/volume"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type JivaInterface interface {
@@ -142,7 +143,17 @@ func (j *jivaUtil) ProvisionStorage(pvc *v1.PersistentVolumeClaim) (*v1.Persiste
 		return nil, err
 	}
 
-	err = setJivaProps(pvc)
+	err = verifySpecs(pvc)
+	if err != nil {
+		return nil, err
+	}
+
+	err = setJivaLblProps(pvc)
+	if err != nil {
+		return nil, err
+	}
+
+	err = setJivaSpecProps(pvc)
 	if err != nil {
 		return nil, err
 	}
@@ -180,12 +191,23 @@ func initLabels(pvc *v1.PersistentVolumeClaim) error {
 	return nil
 }
 
-// setJivaProps function sets jiva specific properties with defaults
+// verifySpecs is a utility function that will verify the Spec
+// of a PersistentVolumeClaim.
+func verifySpecs(pvc *v1.PersistentVolumeClaim) error {
+
+	if &pvc.Spec == nil || &pvc.Spec.Resources == nil || pvc.Spec.Resources.Requests == nil {
+		return fmt.Errorf("Storage specs missing in pvc")
+	}
+
+	return nil
+}
+
+// setJivaLblProps function sets jiva specific properties with defaults
 // if not done so already.
-func setJivaProps(pvc *v1.PersistentVolumeClaim) error {
+func setJivaLblProps(pvc *v1.PersistentVolumeClaim) error {
 
 	if pvc.Labels == nil {
-		return fmt.Errorf("Persistent volume claim's labels not initialized")
+		return fmt.Errorf("Labels missing in pvc")
 	}
 
 	if pvc.Labels[string(v1jiva.JivaFrontEndImageLbl)] == "" {
@@ -193,6 +215,59 @@ func setJivaProps(pvc *v1.PersistentVolumeClaim) error {
 	}
 
 	return nil
+}
+
+// setJivaSpecProps function sets jiva specific properties with defaults
+// if not done so already.
+func setJivaSpecProps(pvc *v1.PersistentVolumeClaim) error {
+
+	// Controller / Front End vol size
+	feQuantity := pvc.Spec.Resources.Requests[v1jiva.JivaFrontEndVolSizeLbl]
+	feQuantityPtr := &feQuantity
+
+	if feQuantityPtr == nil || (feQuantityPtr != nil && feQuantityPtr.Sign() <= 0) {
+
+		size, err := getStorageSize(pvc)
+		if err != nil {
+			return err
+		}
+
+		pvc.Spec.Resources.Requests[v1jiva.JivaFrontEndVolSizeLbl] = size
+	}
+
+	// Replica / Back End vol size
+	beQuantity := pvc.Spec.Resources.Requests[v1jiva.JivaBackEndVolSizeLbl]
+	beQuantityPtr := &beQuantity
+
+	if beQuantityPtr == nil || (beQuantityPtr != nil && beQuantityPtr.Sign() <= 0) {
+
+		size, err := getStorageSize(pvc)
+		if err != nil {
+			return err
+		}
+
+		pvc.Spec.Resources.Requests[v1jiva.JivaBackEndVolSizeLbl] = size
+	}
+
+	return nil
+}
+
+// getStorageSize gets the size of the storage if it was specified in
+// persistent volume claim
+func getStorageSize(pvc *v1.PersistentVolumeClaim) (resource.Quantity, error) {
+
+	size := pvc.Spec.Resources.Requests["storage"]
+	sizePtr := &size
+
+	if sizePtr == nil {
+		return size, fmt.Errorf("Storage size missing in pvc")
+	}
+
+	if sizePtr.Sign() <= 0 {
+		return size, fmt.Errorf("Invalid storage size in pvc")
+	}
+
+	return size, nil
 }
 
 // setRegion sets the region property of a PersistentVolumeClaim

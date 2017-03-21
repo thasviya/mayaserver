@@ -85,7 +85,7 @@ should have Virtual Box & Vagrant installed.
       - ReadWriteOnce
     resources:
       requests:
-        storage: 3Gi
+        storage: 3G
   ```
 
   - NOTE - Verbose specs can be found at:
