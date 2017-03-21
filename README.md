@@ -4,15 +4,7 @@
 
 A service exposing `Kubernetes` like volume APIs.
 
-## Use Cases
-
-### Serving EBS compatibility
-
-Maya api server has some similarity with Kubernetes with respect to latter's
-volume provisioning methods. This makes it super simple for operators and admins
-to get into the usage of OpenEBS without much of learning curve.
-
-## Setting up maya api server locally
+## Setting up maya api server development & run environment
 
 > These are some of the steps to start off with development & running of maya api 
 server in one's laptop. It assumes use of Linux as laptop's OS. In addition, the 
@@ -39,6 +31,27 @@ laptop should have Virtual Box & Vagrant installed.
   - In case of add/update of new/existing vendoring libraries:
     - use `make sync` than `make init`
 ```
+
+## Installing maya api server
+
+> Steps to install maya api server's released binary
+
+```bash
+- Navigate to https://github.com/openebs/mayaserver/releases
+- Download the binary depending on the required release & host OS architecture
+  - e.g. Below link points to release `0.0.6` & `linux_386` architecture
+  - https://github.com/openebs/mayaserver/releases/download/0.0.6/mayaserver-linux_386.zip
+- Extract the m-apiserver binary from above .zip file & put it at /usr/local/bin/
+- Set appropriate user groups & permissions
+```
+
+## Use Cases
+
+### Serving EBS compatibility
+
+Maya api server has some similarity with Kubernetes with respect to latter's
+volume provisioning methods. This makes it super simple for operators and admins
+to get into the usage of OpenEBS without much of learning curve.
 
 ## Maya api server's exposed REST APIs
 
