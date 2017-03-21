@@ -1,7 +1,7 @@
-// This file acts a bi-directional plug to below resources:
+// This file acts a plug to below resources:
 //
-//    1. Mayaserver's orchprovider types
-//    2. Hashicorp Nomad's types
+//    1. Mayaserver's orchprovider interface &
+//    2. Hashicorp Nomad
 package nomad
 
 import (
@@ -9,32 +9,30 @@ import (
 	"io"
 
 	"github.com/golang/glog"
-	//"github.com/hashicorp/nomad/api"
 	"github.com/openebs/mayaserver/lib/api/v1"
+	v1nomad "github.com/openebs/mayaserver/lib/api/v1/nomad"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 )
 
 // Name of this orchestration provider.
-const NomadOrchProviderName = "nomad"
+//const NomadOrchProviderName = "nomad"
 
-// This is invoked at startup.
-// TODO
-//    Put the exact wording than the word `startup` !!
-//
-// TODO
-//    Build a mechanism to reload the orchestrator s.t.
-// orchestrator's config can be updated at runtime &
-// expected effects can be seen
+// The registration logic for jiva orchestrator plugin
 //
 // NOTE:
-//    This is a Golang feature.
-// Due care needs to be exercised to make sure dependencies are initialized &
-// hence available.
+//    This is invoked at startup.
+//
+// NOTE:
+//    Registration & Initialization are two different workflows. Both are
+// mapped by orchestrator plugin name.
 func init() {
 	orchprovider.RegisterOrchProvider(
-		NomadOrchProviderName,
-		func(config io.Reader) (orchprovider.OrchestratorInterface, error) {
-			return newNomadOrchestrator(config)
+		// A variant of nomad orchestrator plugin
+		v1nomad.DefaultNomadPluginName,
+		// Below is a functional implementation that holds the initialization
+		// logic of nomad orchestrator plugin
+		func(name string, region string, config io.Reader) (orchprovider.OrchestratorInterface, error) {
+			return NewNomadOrchestrator(name, region, config)
 		})
 }
 
@@ -44,57 +42,74 @@ func init() {
 //  1. orchprovider.OrchestratorInterface &
 //  2. orchprovider.StoragePlacements
 type NomadOrchestrator struct {
+
+	// Name of this orchestrator
+	name string
+
+	// The region where this orchestrator is deployed
+	// This is set during the initilization time.
+	region string
+
 	// nStorApis represents an instance capable of invoking
 	// storage related APIs
 	nStorApis StorageApis
 
-	// nApiClient represents an instance that can make connection &
-	// invoke Nomad APIs
-	//nApiClient NomadClient
-
-	//region string
+	// nNetApis represents an instance capable of invoking
+	// network related APIs
+	nNetApis NetworkApis
 
 	// nConfig represents an instance that provides the coordinates
 	// of a Nomad server / cluster deployment.
 	nConfig *NomadConfig
 }
 
-// newNomadOrchestrator provides a new instance of NomadOrchestrator. This is
+// NewNomadOrchestrator provides a new instance of NomadOrchestrator. This is
 // invoked during binary startup.
-func newNomadOrchestrator(config io.Reader) (*NomadOrchestrator, error) {
+func NewNomadOrchestrator(name string, region string, config io.Reader) (orchprovider.OrchestratorInterface, error) {
 
 	glog.Infof("Building nomad orchestration provider")
+
+	if name == "" {
+		return nil, fmt.Errorf("Name missing while building nomad orchestrator")
+	}
+
+	if region == "" {
+		return nil, fmt.Errorf("Region missing while building nomad orchestrator")
+	}
 
 	// Transform the Reader to a NomadConfig
 	nCfg, err := readNomadConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read Nomad orchestrator's config: %v", err)
+		return nil, fmt.Errorf("Unable to read Nomad orchestrator's config: %v", err)
 	}
 
 	// TODO
 	// validations of the populated config structure
 
-	// Get a new instance of Nomad API Provider
-	apis := newNomadApiProvider(nCfg)
-
-	// Get the Nomad api client
-	nApiClient, err := apis.Client()
+	// Get a new instance of Nomad API
+	nApi, err := newNomadApi(nCfg)
 	if err != nil {
-		return nil, fmt.Errorf("error creating Nomad api client: %v", err)
+		return nil, err
 	}
 
 	// Get Nomad's storage specific API provider
-	nStorApis, err := apis.StorageApis(nApiClient)
-	if err != nil {
-		return nil, fmt.Errorf("error creating Nomad storage operations instance: %v", err)
+	nStorApis, ok := nApi.StorageApis()
+	if !ok {
+		return nil, fmt.Errorf("Storage APIs not supported in nomad api instance '%s'", nApi.Name())
+	}
+
+	nNetApis, ok := nApi.NetworkApis()
+	if !ok {
+		return nil, fmt.Errorf("Network APIs not supported in nomad api instance '%s'", nApi.Name())
 	}
 
 	// build the orchestrator instance
 	nOrch := &NomadOrchestrator{
 		nStorApis: nStorApis,
-		//nApiClient: nApiClient,
-		nConfig: nCfg,
-		//region:   regionName,
+		nNetApis:  nNetApis,
+		nConfig:   nCfg,
+		region:    region,
+		name:      name,
 	}
 
 	return nOrch, nil
@@ -104,7 +119,14 @@ func newNomadOrchestrator(config io.Reader) (*NomadOrchestrator, error) {
 // This is an implementation of the orchprovider.OrchestratorInterface interface.
 func (n *NomadOrchestrator) Name() string {
 
-	return NomadOrchProviderName
+	return n.name
+}
+
+// Region provides the region where this orchestrator is running.
+// This is an implementation of the orchprovider.OrchestratorInterface interface.
+func (n *NomadOrchestrator) Region() string {
+
+	return n.region
 }
 
 // StoragePlacements is this orchestration provider's
@@ -112,6 +134,21 @@ func (n *NomadOrchestrator) Name() string {
 func (n *NomadOrchestrator) StoragePlacements() (orchprovider.StoragePlacements, bool) {
 
 	return n, true
+}
+
+// NetworkPlacements is this orchestration provider's
+// implementation of the orchprovider.OrchestratorInterface interface.
+func (n *NomadOrchestrator) NetworkPlacements() (orchprovider.NetworkPlacements, bool) {
+
+	return n, true
+}
+
+// NetworkInfoReq is a contract method implementation of
+// orchprovider.NetworkPlacements interface. In this implementation,
+// network resource details will be fetched from a Nomad deployment.
+func (n *NomadOrchestrator) NetworkInfoReq(dc string) (map[v1.ContainerNetworkingLbl]string, error) {
+
+	return n.nNetApis.NetworkInfo(dc)
 }
 
 // StorageInfoReq is a contract method implementation of

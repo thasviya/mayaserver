@@ -20,8 +20,7 @@ import (
 	"github.com/ugorji/go/codec"
 	//"gopkg.in/yaml.v2"
 	"github.com/ghodss/yaml"
-
-	"github.com/openebs/mayaserver/lib/volume"
+	//"github.com/openebs/mayaserver/lib/volume"
 )
 
 const (
@@ -140,9 +139,9 @@ func (s *HTTPServer) registerHandlers(serviceProvider string, enableDebug bool) 
 
 // GetVolumePlugin is a pass through function that provides a particular
 // volume plugin
-func (s *HTTPServer) GetVolumePlugin(name string) (volume.VolumeInterface, error) {
-	return s.maya.GetVolumePlugin(name)
-}
+//func (s *HTTPServer) GetVolumePlugin(name string) (volume.VolumeInterface, error) {
+//	return s.maya.GetVolumePlugin(name)
+//}
 
 // HTTPCodedError is used to provide the HTTP error code
 type HTTPCodedError interface {

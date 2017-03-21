@@ -10,11 +10,10 @@
 //
 // NOTE:
 //    A volume in OpenEBS has the same design as a pod in K8s. Alternatively,
-// a volume in OpenEBS is known as a StoragePod.
+// a volume in OpenEBS can be considered as a StoragePod.
 package v1
 
 import (
-	//nomadapi "github.com/hashicorp/nomad/api"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"

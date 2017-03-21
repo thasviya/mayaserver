@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/nomad/helper"
 	"github.com/hashicorp/nomad/nomad/structs"
 	"github.com/openebs/mayaserver/lib/api/v1"
+	v1jiva "github.com/openebs/mayaserver/lib/api/v1/jiva"
 )
 
 // Get the job name from a persistent volume claim
@@ -40,47 +41,50 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 		return nil, fmt.Errorf("Missing labels in persistent volume claim")
 	}
 
-	if pvc.Labels["region"] == "" {
+	if pvc.Labels[string(v1.RegionLbl)] == "" {
 		return nil, fmt.Errorf("Missing region in persistent volume claim")
 	}
 
-	if pvc.Labels["datacenter"] == "" {
+	if pvc.Labels[string(v1.DatacenterLbl)] == "" {
 		return nil, fmt.Errorf("Missing datacenter in persistent volume claim")
 	}
 
-	if pvc.Labels["jivafeversion"] == "" {
-		return nil, fmt.Errorf("Missing jiva fe version in persistent volume claim")
+	if pvc.Labels[string(v1jiva.JivaFrontEndImageLbl)] == "" {
+		return nil, fmt.Errorf("Missing jiva fe image version in persistent volume claim")
 	}
 
-	if pvc.Labels["jivafenetwork"] == "" {
-		return nil, fmt.Errorf("Missing jiva fe network in persistent volume claim")
+	if pvc.Labels[string(v1.CNTypeLbl)] == "" {
+		return nil, fmt.Errorf("Missing cn type in persistent volume claim")
 	}
 
-	if pvc.Labels["jivafeip"] == "" {
+	if pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] == "" {
 		return nil, fmt.Errorf("Missing jiva fe ip in persistent volume claim")
 	}
 
-	if pvc.Labels["jivabeip"] == "" {
+	if pvc.Labels[string(v1jiva.JivaBackEndIPLbl)] == "" {
 		return nil, fmt.Errorf("Missing jiva be ip in persistent volume claim")
 	}
 
-	if pvc.Labels["jivafesubnet"] == "" {
-		return nil, fmt.Errorf("Missing jiva fe subnet in persistent volume claim")
+	if pvc.Labels[string(v1.CNSubnetLbl)] == "" {
+		return nil, fmt.Errorf("Missing cn subnet in persistent volume claim")
 	}
 
-	if pvc.Labels["jivafeinterface"] == "" {
-		return nil, fmt.Errorf("Missing jiva fe interface in persistent volume claim")
+	if pvc.Labels[string(v1.CNInterfaceLbl)] == "" {
+		return nil, fmt.Errorf("Missing cn interface in persistent volume claim")
 	}
 
 	// TODO
 	// ID is same as Name currently
 	// Do we need to think on it ?
 	jobName := helper.StringToPtr(pvc.Name)
-	region := helper.StringToPtr(pvc.Labels["region"])
-	dc := pvc.Labels["datacenter"]
+	region := helper.StringToPtr(pvc.Labels[string(v1.RegionLbl)])
+	dc := pvc.Labels[string(v1.DatacenterLbl)]
 
 	jivaGroupName := "pod"
 	jivaVolName := pvc.Name
+
+	// TODO
+	// Get from the PVC
 	jivaVolSize := "5g"
 
 	feTaskGroup := "fe" + jivaGroupName
@@ -88,18 +92,18 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	beTaskGroup := "be" + jivaGroupName
 	beTaskName := "be1"
 
-	jivaFeVersion := pvc.Labels["jivafeversion"]
-	jivaFeNetwork := pvc.Labels["jivafenetwork"]
-	jivaFeIP := pvc.Labels["jivafeip"]
-	jivaBeIP := pvc.Labels["jivabeip"]
-	jivaFeSubnet := pvc.Labels["jivafesubnet"]
-	jivaFeInterface := pvc.Labels["jivafeinterface"]
+	jivaFeVersion := pvc.Labels[string(v1jiva.JivaFrontEndImageLbl)]
+	jivaNetworkType := pvc.Labels[string(v1.CNTypeLbl)]
+	jivaFeIP := pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)]
+	jivaBeIP := pvc.Labels[string(v1jiva.JivaBackEndIPLbl)]
+	jivaFeSubnet := pvc.Labels[string(v1.CNSubnetLbl)]
+	jivaFeInterface := pvc.Labels[string(v1.CNInterfaceLbl)]
 
 	// TODO
 	// Transformation from pvc or pv to nomad types & vice-versa:
 	//
 	//  1. Need an Interface or functional callback defined at
-	// lib/api/v1/nomad.go &
+	// lib/api/v1/nomad/ &
 	//  2. implemented by the volume plugins that want
 	// to be orchestrated by Nomad
 	//  3. This transformer instance needs to be injected from
@@ -121,8 +125,8 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 		// Meta information will be used to pass on the metadata from
 		// nomad to clients of mayaserver.
 		Meta: map[string]string{
-			"targetportal": jivaFeIP + ":3260",
-			"iqn":          "iqn.2016-09.com.openebs.jiva:" + jivaVolName,
+			"targetportal": jivaFeIP + ":" + v1jiva.JivaIscsiTargetPortalPort,
+			"iqn":          v1jiva.JivaIqnFormatPrefix + ":" + jivaVolName,
 		},
 		TaskGroups: []*api.TaskGroup{
 			// jiva frontend
@@ -203,7 +207,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 							"JIVA_REP_VOLSIZE":  jivaVolSize,
 							"JIVA_REP_VOLSTORE": "/tmp/jiva/" + pvc.Name + beTaskGroup + "/" + beTaskName,
 							"JIVA_REP_VERSION":  jivaFeVersion,
-							"JIVA_REP_NETWORK":  jivaFeNetwork,
+							"JIVA_REP_NETWORK":  jivaNetworkType,
 							"JIVA_REP_IFACE":    jivaFeInterface,
 							"JIVA_REP_IP":       jivaBeIP,
 							"JIVA_REP_SUBNET":   jivaFeSubnet,

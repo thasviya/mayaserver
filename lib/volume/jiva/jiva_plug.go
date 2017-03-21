@@ -8,41 +8,43 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/openebs/mayaserver/lib/api/v1"
+	v1jiva "github.com/openebs/mayaserver/lib/api/v1/jiva"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	"github.com/openebs/mayaserver/lib/volume"
-)
-
-const (
-	// A well defined namespaced name given to this volume plugin implementation
-	JivaStorPluginName = "openebs.io/jiva"
 )
 
 // The registration logic for jiva storage volume plugin
 //
 // NOTE:
 //    This is invoked at startup.
-// TODO put the exact word rather than startup !!
-//    This is a Golang feature.
 //
 // NOTE:
-//    Due care needs to be exercised to make sure dependencies
-// are initialized & hence available.
+//    Registration & Initialization are two different workflows. Both are
+// mapped by volume plugin name.
 func init() {
 	volume.RegisterVolumePlugin(
-		JivaStorPluginName,
-		func(config io.Reader, aspect volume.VolumePluginAspect) (volume.VolumeInterface, error) {
-			return newJivaStor(config, aspect)
+		// A variant of jiva volume plugin
+		v1jiva.DefaultJivaVolumePluginName,
+		// Below is a functional implementation that holds the initialization
+		// logic of jiva volume plugin
+		func(name string, config io.Reader, aspect volume.VolumePluginAspect) (volume.VolumeInterface, error) {
+			return newJivaStor(name, config, aspect)
 		})
 }
 
-// JivaStorNomadAspect is a concrete implementation of VolumePluginAspect
-// This is a utility struct (publicly scoped) that can be used during jiva volume
-// plugin initialization
+// JivaStorNomadAspect is a concrete implementation of following interface:
+//
+//  1. volume.VolumePluginAspect interface
 type JivaStorNomadAspect struct {
 
 	// The aspect that deals with orchestration needs for jiva
 	// storage
 	Nomad orchprovider.OrchestratorInterface
+
+	// The datacenter which will be the target of API calls.
+	// This is useful to set the default value of datacenter for
+	// orchprovider.OrchestratorInterface instance.
+	Datacenter string
 }
 
 func (jAspect *JivaStorNomadAspect) GetOrchProvider() (orchprovider.OrchestratorInterface, error) {
@@ -54,6 +56,10 @@ func (jAspect *JivaStorNomadAspect) GetOrchProvider() (orchprovider.Orchestrator
 	return jAspect.Nomad, nil
 }
 
+func (jAspect *JivaStorNomadAspect) DefaultDatacenter() (string, error) {
+	return jAspect.Datacenter, nil
+}
+
 // jivaStor is the concrete implementation that implements
 // following interfaces:
 //
@@ -61,9 +67,13 @@ func (jAspect *JivaStorNomadAspect) GetOrchProvider() (orchprovider.Orchestrator
 //  2. volume.Provisioner interface
 //  3. volume.Deleter interface
 type jivaStor struct {
-	// jivaOps abstracts the operations related to this jivaStor
+
+	// name is the name of this jiva volume plugin.
+	name string
+
+	// jStorOps abstracts the storage operations of this jivaStor
 	// instance
-	jivaOps JivaOps
+	jStorOps StorageOps
 
 	// TODO
 	// jConfig provides a handle to tune the operations of
@@ -72,29 +82,36 @@ type jivaStor struct {
 }
 
 // newJivaStor provides a new instance of jivaStor.
-// This function aligns with VolumePluginFactory type.
-func newJivaStor(config io.Reader, aspect volume.VolumePluginAspect) (*jivaStor, error) {
+//
+// This function aligns with VolumePluginFactory function type.
+func newJivaStor(name string, config io.Reader, aspect volume.VolumePluginAspect) (*jivaStor, error) {
 
-	glog.Infof("Building new instance of jiva storage")
+	glog.Infof("Building new instance of jiva storage '%s'", name)
 
 	// TODO
 	//jCfg, err := readJivaConfig(config)
 	//if err != nil {
-	//	return nil, fmt.Errorf("unable to read Nomad orchestration provider config file: %v", err)
+	//	return nil, fmt.Errorf("unable to read Jiva volume provisioner config file: %v", err)
 	//}
 
 	// TODO
 	// validations of the populated config structure
 
-	jivaOps, err := newJivaOrchestrator(aspect)
+	jivaUtil, err := newJivaUtil(aspect)
 	if err != nil {
 		return nil, err
 	}
 
+	jStorOps, ok := jivaUtil.StorageOps()
+	if !ok {
+		return nil, fmt.Errorf("Storage operations not supported by jiva util '%s'", jivaUtil.Name())
+	}
+
 	// build the provisioner instance
 	jivaStor := &jivaStor{
+		name: name,
 		//aspect: aspect,
-		jivaOps: jivaOps,
+		jStorOps: jStorOps,
 		//jConfig:    jCfg,
 	}
 
@@ -106,11 +123,11 @@ func newJivaStor(config io.Reader, aspect volume.VolumePluginAspect) (*jivaStor,
 // NOTE:
 //    This is a contract implementation of volume.VolumeInterface
 func (j *jivaStor) Name() string {
-	return JivaStorPluginName
+	return j.name
 }
 
-// jivaStor supports provising information of a jiva volume
-// This is made possible by its jivaOps property
+// Informer provides a instance of volume.Informer interface.
+// Since jivaStor implements volume.Informer, it returns self.
 //
 // NOTE:
 //    This is a contract implementation of volume.VolumeInterface
@@ -118,58 +135,56 @@ func (j *jivaStor) Informer() (volume.Informer, bool) {
 	return j, true
 }
 
-// jivaStor supports provisioning
-// This is made possible by its jivaOps property
+// Provisioner provides a instance of volume.Provisioner interace
+// Since jivaStor implements volume.Provisioner, it returns self.
 //
 // NOTE:
-//    This is a contract implementation of volume.VolumeInterface
+//    This is a concrete implementation of volume.VolumeInterface
 func (j *jivaStor) Provisioner() (volume.Provisioner, bool) {
 	return j, true
 }
 
-// jivaStor supports deletion
-// This is made possible by its jivaOps property
+// Deleter provides a instance of volume.Deleter interface
+// Since jivaStor implements volume.Deleter, it returns self.
 //
 // NOTE:
-//    This is a contract implementation of volume.VolumeInterface
+//    This is a concrete implementation of volume.VolumeInterface
 func (j *jivaStor) Deleter() (volume.Deleter, bool) {
 	return j, true
 }
 
-// jivaStor provides information on a volume via its jivaOps property.
+// Info provides information on a jiva volume
 //
 // NOTE:
-//    This is a contract implementation of volume.Informer interface
+//    This is a concrete implementation of volume.Informer interface
 func (j *jivaStor) Info(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
 	// TODO
 	// Validations of input i.e. claim
 
 	// Delegate to its provider
-	return j.jivaOps.Info(pvc)
+	return j.jStorOps.StorageInfo(pvc)
 }
 
-// jivaStor provisions a volume via its jivaOps property.
+// Provision provisions a jiva volume
 //
 // NOTE:
-//    This is a contract implementation of volume.Provisioner interface
+//    This is a concrete implementation of volume.Provisioner interface
 func (j *jivaStor) Provision(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
 
 	// TODO
 	// Validations of input i.e. claim
 
-	// Delegate to its provider
-	return j.jivaOps.Provision(pvc)
+	return j.jStorOps.ProvisionStorage(pvc)
 }
 
-// jivaStor removes a volume via its jivaOps property.
+// Delete removes a jiva volume
 //
 // NOTE:
-//    This is a contract implementation of volume.Deleter interface
+//    This is a concrete implementation of volume.Deleter interface
 func (j *jivaStor) Delete(pv *v1.PersistentVolume) (*v1.PersistentVolume, error) {
 
 	// TODO
 	// Validations if any
 
-	// Delegate to its provider
-	return j.jivaOps.Delete(pv)
+	return j.jStorOps.DeleteStorage(pv)
 }

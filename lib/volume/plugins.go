@@ -17,11 +17,23 @@ import (
 	"github.com/openebs/mayaserver/lib/orchprovider"
 )
 
-// VolumeFactory is a function that returns a volume.VolumeInterface.
-// The config parameter provides an io.Reader handler to the factory in
-// order to load specific configurations. If no configuration is provided
-// the parameter is nil.
-type VolumeFactory func(config io.Reader, aspect VolumePluginAspect) (VolumeInterface, error)
+// VolumeFactory is signature function that every volume plugin implementor
+// needs to implement. It should contain the initialization logic w.r.t a
+// volume plugin. This function signature i.e. functional type has been created
+// to enable lazy initialization of volume plugin. In other words, a volume
+// plugin can be initialized at runtime when the parameters are available or
+// can be provided.
+//
+// `name` parameter signifies the name of the volume plugin
+//
+// `config` parameter provides an io.Reader handler in order to load specific
+// configurations. If no configuration is provided the parameter is nil.
+//
+// `aspect` parameter provides handles to various orthogonal aspects of the
+// volume plugin. e.g.
+//  1. aspect provides the region based orchestrator associated with the volume plugin.
+//  2. aspect can be used to target the default datacenter of above orchestrator.
+type VolumeFactory func(name string, config io.Reader, aspect VolumePluginAspect) (VolumeInterface, error)
 
 // VolumePluginAspect is an interface that provides a blueprint for plugins
 // to cater to the needs when a plugin requires the help of a third party
@@ -36,6 +48,17 @@ type VolumePluginAspect interface {
 	//    OpenEBS believes in running storage software in containers & hence
 	// above container specific orchestrators.
 	GetOrchProvider() (orchprovider.OrchestratorInterface, error)
+
+	// Get the datacenter typically within a region, that will be the target
+	// for all requests.
+	//
+	// e.g. An orchestrator might be deployed in multiple datacenters
+	// within a region. This will help in pointing the requests to a
+	// particular datacenter.
+	//
+	// NOTE:
+	//  This will be used only if user action request does not specify a datacenter
+	DefaultDatacenter() (string, error)
 }
 
 // All registered volume plugins.
@@ -43,8 +66,14 @@ var (
 	volumePluginsMutex sync.Mutex
 
 	// A mapped instance of volume plugin name with the plugin's
-	// initializer
-	volumePlugins = make(map[string]VolumeFactory)
+	// initializer function.
+	volumePluginRegistry = make(map[string]VolumeFactory)
+
+	// A mapped instance of volume plugin name with the actual
+	// plugin instance.
+	//
+	// Acts as a cache.
+	volumePluginInstances = make(map[string]VolumeInterface)
 )
 
 // VolumePluginConfig is how volume plugins receive configuration.  An instance
@@ -77,27 +106,33 @@ type VolumePluginConfig struct {
 	OtherAttributes map[string]string
 }
 
-// RegisterVolumePlugin registers a volume.VolumePlugin by name.
-// This is just a registry entry. The actual initialization is done
-// elsewhere with passing of dynamic parameters i.e.
+// RegisterVolumePlugin registers a volume.VolumeInterface by name.
+// This is just a registry entry.
 //
-//  1. volume plugin config file and
-//  2. volume aspect instance
+// NOTE:
+// Registration & Initialization are two different workflows.
+//
+// VolumeFactory instance represents the initialization logic. This is
+// executed lazily. The initialization logic accepts various parameters
+// like:
+//
+//  1. volume plugin name,
+//  2. volume plugin config file,
+//  3. volume aspect instance
 //
 // NOTE:
 //    Each implementation of volume plugin need to call
 // RegisterVolumePlugin inside their init() function.
-//func RegisterVolumePlugin(name string, factory VolumePluginFactory) {
 func RegisterVolumePlugin(name string, factory VolumeFactory) {
 	volumePluginsMutex.Lock()
 	defer volumePluginsMutex.Unlock()
 
-	if _, found := volumePlugins[name]; found {
+	if _, found := volumePluginRegistry[name]; found {
 		glog.Fatalf("Volume plugin %q was registered twice", name)
 	}
 
 	glog.V(1).Infof("Registered volume plugin %q", name)
-	volumePlugins[name] = factory
+	volumePluginRegistry[name] = factory
 }
 
 // IsVolumePlugin returns true if name corresponds to an already
@@ -106,7 +141,7 @@ func IsVolumePlugin(name string) bool {
 	volumePluginsMutex.Lock()
 	defer volumePluginsMutex.Unlock()
 
-	_, found := volumePlugins[name]
+	_, found := volumePluginRegistry[name]
 	return found
 }
 
@@ -117,34 +152,59 @@ func VolumePlugins() []string {
 	volumePluginsMutex.Lock()
 	defer volumePluginsMutex.Unlock()
 
-	for name := range volumePlugins {
+	for name := range volumePluginRegistry {
 		names = append(names, name)
 	}
 	return names
 }
 
-// GetVolumePlugin creates an instance of the named volume plugin,
-// or nil if the name is unknown. The error return is only used if the named
-// volume plugin was known but failed to initialize. The config parameter specifies
-// the io.Reader handler of the configuration file for the volume
-// plugin, or nil for no configuation.
-//func GetVolumePlugin(name string, config io.Reader, aspect VolumePluginAspect) (VolumePlugin, error) {
+// GetVolumePlugin creates an instance or returns previously created instance of
+// the named volume plugin.
+//
+// NOTE:
+//    This can be invoked just to get a cached instance by providing the name
+// of the volume plugin only.
 func GetVolumePlugin(name string, config io.Reader, aspect VolumePluginAspect) (VolumeInterface, error) {
 	volumePluginsMutex.Lock()
 	defer volumePluginsMutex.Unlock()
 
-	factory, found := volumePlugins[name]
+	factory, found := volumePluginRegistry[name]
 	if !found {
-		return nil, nil
+		return nil, fmt.Errorf("Volume plugin '%s' not registered", name)
 	}
-	return factory(config, aspect)
+
+	// Search from cache
+	existingInstance, found := volumePluginInstances[name]
+	if !found {
+		// create the plugin instance
+		newInstance, err := factory(name, config, aspect)
+		if err != nil {
+			return nil, err
+		}
+
+		// cache it
+		volumePluginInstances[name] = newInstance
+		return newInstance, nil
+	}
+
+	return existingInstance, nil
 }
 
-// TODO
-// Who calls this ?
-// This will currently be triggered while starting the binary as a http service ?
-//
 // InitVolumePlugin creates an instance of the named volume plugin.
+//
+// NOTE:
+//    Who calls this ?
+// This is triggered while starting the Mayaserver as a http service.
+//
+// Http service invokes this to initialize the default volume plugin with the
+// plugin's default orchestrator pointing to the orchestrator's default region.
+//
+// This can also be invoked at runtime depending on user initiated requests that
+// demand a specific volume plugin or a specific variant of volume plugin.
+//
+// NOTE:
+//    However, the volume plugin name should be registered before invoking this
+// function.
 func InitVolumePlugin(name string, configFilePath string, aspect VolumePluginAspect) (VolumeInterface, error) {
 	//var orchestrator Interface
 	var volumeInterface VolumeInterface

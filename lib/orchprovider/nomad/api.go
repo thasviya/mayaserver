@@ -7,41 +7,60 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/nomad/api"
+	"github.com/openebs/mayaserver/lib/api/v1"
 )
 
-// Apis provides a means to communicate with Nomad Apis
-type Apis interface {
+// NomadApiInterface provides a means to issue APIs against a Nomad cluster.
+// These APIs are futher categorized into Networking & Storage specific APIs.
+type NomadApiInterface interface {
 
-	// This returns a client that can communicate with Nomad
-	Client() (NomadClient, error)
+	// Name of the Nomad API implementor
+	Name() string
+
+	// This returns a concrete implementation of NetworkApis
+	NetworkApis() (NetworkApis, bool)
 
 	// This returns a concrete implementation of StorageApis
-	StorageApis(nApiClient NomadClient) (StorageApis, error)
+	StorageApis() (StorageApis, bool)
 }
 
-// nomadApiProvider is an implementation of nomad.Apis interface
-type nomadApiProvider struct {
-	nConfig *NomadConfig
+// nomadApi is an implementation of
+//
+//  1. nomad.NomadApiInterface interface
+//  2. nomad.NetworkApis interface
+//  3. nomad.StorageApis interface
+//
+// It is composed of NomadUtilInterface
+type nomadApi struct {
+	nUtil NomadUtilInterface
 }
 
-// newNomadApiProvider provides a new instance of nomadApiProvider
-func newNomadApiProvider(nConfig *NomadConfig) *nomadApiProvider {
-	return &nomadApiProvider{
-		nConfig: nConfig,
+// newNomadApi provides a new instance of nomadApi
+func newNomadApi(nConfig *NomadConfig) (*nomadApi, error) {
+
+	nUtil, err := newNomadUtil(nConfig)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create nomad api instance")
 	}
-}
 
-// Provides a concrete implementation of Nomad api client that
-// can invoke Nomad APIs
-func (nap *nomadApiProvider) Client() (NomadClient, error) {
-	return newNomadClientUtil(nap.nConfig)
-}
-
-// Returns an instance of StorageApis.
-func (ncp *nomadApiProvider) StorageApis(nApiClient NomadClient) (StorageApis, error) {
-	return &nomadStorageApi{
-		nApiClient: nApiClient,
+	return &nomadApi{
+		nUtil: nUtil,
 	}, nil
+}
+
+// This is a plain nomad api implementor & hence the name
+func (n *nomadApi) Name() string {
+	return "nomadapi"
+}
+
+// nomadApi implements NetworkApis, hence it returns self.
+func (n *nomadApi) NetworkApis() (NetworkApis, bool) {
+	return n, true
+}
+
+// nomadApi implements StorageApis, hence it returns self.
+func (n *nomadApi) StorageApis() (StorageApis, bool) {
+	return n, true
 }
 
 // StorageApis provides a means to communicate with Nomad Apis
@@ -64,33 +83,31 @@ type StorageApis interface {
 	StorageInfo(jobName string) (*api.Job, error)
 }
 
-// nomadStorageApi is an implementation of the nomad.StorageApis interface
-// This will make API calls to Nomad from mayaserver. In addition, it
-// understands submitting a job specs to a Nomad deployment.
-type nomadStorageApi struct {
-	nApiClient NomadClient
-}
-
 // Fetch info about a particular resource in Nomad cluster.
 //
 // NOTE:
 //    Nomad does not have persistent volume as its first class citizen.
 // Hence, this resource should exhibit storage characteristics. The validations
 // for this should have been done at the volume plugin implementation.
-func (nsApi *nomadStorageApi) StorageInfo(jobName string) (*api.Job, error) {
+func (n *nomadApi) StorageInfo(jobName string) (*api.Job, error) {
 
-	nApiClient := nsApi.nApiClient
-	if nApiClient == nil {
-		return nil, fmt.Errorf("nomad api client not initialized")
+	nUtil := n.nUtil
+	if nUtil == nil {
+		return nil, fmt.Errorf("Nomad utility not initialized")
 	}
 
-	nApiHttpClient, err := nApiClient.Http()
+	nClients, ok := nUtil.NomadClients()
+	if !ok {
+		return nil, fmt.Errorf("Nomad clients not supported by nomad utility '%s'", nUtil.Name())
+	}
+
+	nHttpClient, err := nClients.Http()
 	if err != nil {
 		return nil, err
 	}
 
 	// Fetch the job info
-	job, _, err := nApiHttpClient.Jobs().Info(jobName, &api.QueryOptions{})
+	job, _, err := nHttpClient.Jobs().Info(jobName, &api.QueryOptions{})
 
 	if err != nil {
 		return nil, err
@@ -105,27 +122,32 @@ func (nsApi *nomadStorageApi) StorageInfo(jobName string) (*api.Job, error) {
 //    Nomad does not have persistent volume as its first class citizen.
 // Hence, this resource should exhibit storage characteristics. The validations
 // for this should have been done at the volume plugin implementation.
-func (nsApi *nomadStorageApi) CreateStorage(job *api.Job) (*api.Evaluation, error) {
+func (n *nomadApi) CreateStorage(job *api.Job) (*api.Evaluation, error) {
 
-	nApiClient := nsApi.nApiClient
-	if nApiClient == nil {
-		return nil, fmt.Errorf("nomad api client not initialized")
+	nUtil := n.nUtil
+	if nUtil == nil {
+		return nil, fmt.Errorf("Nomad utility not initialized")
 	}
 
-	nApiHttpClient, err := nApiClient.Http()
+	nClients, ok := nUtil.NomadClients()
+	if !ok {
+		return nil, fmt.Errorf("Nomad clients not supported by nomad utility '%s'", nUtil.Name())
+	}
+
+	nHttpClient, err := nClients.Http()
 	if err != nil {
 		return nil, err
 	}
 
 	// Register a job & get its evaluation id
-	evalID, _, err := nApiHttpClient.Jobs().Register(job, &api.WriteOptions{})
+	evalID, _, err := nHttpClient.Jobs().Register(job, &api.WriteOptions{})
 
 	if err != nil {
 		return nil, err
 	}
 
 	// Get the evaluation details
-	eval, _, err := nApiHttpClient.Evaluations().Info(evalID, &api.QueryOptions{})
+	eval, _, err := nHttpClient.Evaluations().Info(evalID, &api.QueryOptions{})
 
 	if err != nil {
 		return nil, err
@@ -140,28 +162,67 @@ func (nsApi *nomadStorageApi) CreateStorage(job *api.Job) (*api.Evaluation, erro
 //    Nomad does not have persistent volume as its first class citizen.
 // Hence, this resource should exhibit storage characteristics. The validations
 // for this should have been done at the volume plugin implementation.
-func (nsApi *nomadStorageApi) DeleteStorage(job *api.Job) (*api.Evaluation, error) {
+func (n *nomadApi) DeleteStorage(job *api.Job) (*api.Evaluation, error) {
 
-	nApiClient := nsApi.nApiClient
-	if nApiClient == nil {
-		return nil, fmt.Errorf("nomad api client not initialized")
+	nUtil := n.nUtil
+	if nUtil == nil {
+		return nil, fmt.Errorf("Nomad utility not initialized")
 	}
 
-	nApiHttpClient, err := nApiClient.Http()
+	nClients, ok := nUtil.NomadClients()
+	if !ok {
+		return nil, fmt.Errorf("Nomad clients not supported by nomad utility '%s'", nUtil.Name())
+	}
+
+	nHttpClient, err := nClients.Http()
 	if err != nil {
 		return nil, err
 	}
 
-	evalID, _, err := nApiHttpClient.Jobs().Deregister(*job.Name, &api.WriteOptions{})
+	evalID, _, err := nHttpClient.Jobs().Deregister(*job.Name, &api.WriteOptions{})
 
 	if err != nil {
 		return nil, err
 	}
 
-	eval, _, err := nApiHttpClient.Evaluations().Info(evalID, &api.QueryOptions{})
+	eval, _, err := nHttpClient.Evaluations().Info(evalID, &api.QueryOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	return eval, nil
+}
+
+// NetworkApis provides a means to issue Nomad Apis
+// w.r.t network.
+//
+// NOTE:
+//    Nomad has no notion of Networking.
+type NetworkApis interface {
+
+	// NetworkInfo fetches appropriate container networking values that
+	// is assumed to be supported at deployed Nomad environment.
+	NetworkInfo(dc string) (map[v1.ContainerNetworkingLbl]string, error)
+}
+
+// Fetch networking information that is supported at the deployed Nomad
+// environment.
+func (n *nomadApi) NetworkInfo(dc string) (map[v1.ContainerNetworkingLbl]string, error) {
+
+	nUtil := n.nUtil
+	if nUtil == nil {
+		return nil, fmt.Errorf("Nomad utility not initialized")
+	}
+
+	nNetworks, ok := nUtil.NomadNetworks()
+	if !ok {
+		return nil, fmt.Errorf("Nomad networks not supported by nomad utility '%s'", nUtil.Name())
+	}
+
+	nc, err := nNetworks.CN(dc)
+	if err != nil {
+		return nil, err
+	}
+
+	return nc, nil
 }

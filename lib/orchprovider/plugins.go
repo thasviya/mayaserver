@@ -9,42 +9,60 @@ import (
 	"github.com/golang/glog"
 )
 
-// Factory is a function that returns a orchprovider.OrchestratorInterface.
-// The config parameter provides an io.Reader handler to the factory in
-// order to load specific configurations. If no configuration is provided
-// the parameter is nil.
-type Factory func(config io.Reader) (OrchestratorInterface, error)
+// OrchFactory is signature function that every orchestrator plugin implementor
+// needs to implement. It should contain the initialization logic w.r.t a
+// orchestrator plugin. This function signature i.e. functional type has been created
+// to enable lazy initialization of orchestrator plugin. In other words, a orchestrator
+// plugin can be initialized at runtime when the parameters are available or
+// can be provided.
+//
+// `name` parameter signifies the name of the orchestrator plugin
+//
+// `config` parameter provides an io.Reader handler in order to load specific
+// configurations. If no configuration is provided the parameter is nil.
+type OrchFactory func(name string, region string, config io.Reader) (OrchestratorInterface, error)
 
 // All registered orchestration providers.
 var (
-	providersMutex sync.Mutex
-	providers      = make(map[string]Factory)
+	orchPluginsMutex   sync.Mutex
+	orchPluginRegistry = make(map[string]OrchFactory)
 )
 
-// RegisterOrchProvider registers a orchprovider.Factory by name.
+// RegisterOrchProvider registers a orchprovider.OrchestratorInterface by name.
+// This is just a registry entry.
 //
-// This is expected to happen during binary startup.
+// NOTE:
+// Registration & Initialization are two different workflows.
 //
-// How ?
-//    Each implementation of orchestration provider need to call
+// OrchFactory instance represents the initialization logic. This is
+// executed lazily. The initialization logic accepts various parameters
+// like:
+//
+//  1. orchestrator plugin name,
+//  2. orchestrator plugin config file
+//
+// NOTE:
+//    Each implementation of orchestrator plugin need to call
 // RegisterOrchProvider inside their init() function.
-func RegisterOrchProvider(name string, factory Factory) {
-	providersMutex.Lock()
-	defer providersMutex.Unlock()
-	if _, found := providers[name]; found {
+func RegisterOrchProvider(name string, factory OrchFactory) {
+	orchPluginsMutex.Lock()
+	defer orchPluginsMutex.Unlock()
+
+	if _, found := orchPluginRegistry[name]; found {
 		glog.Fatalf("Orchestration provider %q was registered twice", name)
 	}
+
 	glog.V(1).Infof("Registered orchestration provider %q", name)
-	providers[name] = factory
+	orchPluginRegistry[name] = factory
 }
 
 // IsOrchProvider returns true if name corresponds to an already
 // registered orchestration provider.
 func IsOrchProvider(name string) bool {
-	providersMutex.Lock()
-	defer providersMutex.Unlock()
+	orchPluginsMutex.Lock()
+	defer orchPluginsMutex.Unlock()
 
-	_, found := providers[name]
+	_, found := orchPluginRegistry[name]
 	return found
 }
 
@@ -52,12 +70,13 @@ func IsOrchProvider(name string) bool {
 // providers in a string slice
 func OrchProviders() []string {
 	names := []string{}
-	providersMutex.Lock()
-	defer providersMutex.Unlock()
+	orchPluginsMutex.Lock()
+	defer orchPluginsMutex.Unlock()
 
-	for name := range providers {
+	for name := range orchPluginRegistry {
 		names = append(names, name)
 	}
+
 	return names
 }
 
@@ -66,28 +85,44 @@ func OrchProviders() []string {
 // provider was known but failed to initialize. The config parameter specifies
 // the io.Reader handler of the configuration file for the orchestration
 // provider, or nil for no configuation.
-func GetOrchProvider(name string, config io.Reader) (OrchestratorInterface, error) {
-	providersMutex.Lock()
-	defer providersMutex.Unlock()
+func GetOrchProvider(name string, region string, config io.Reader) (OrchestratorInterface, error) {
+	orchPluginsMutex.Lock()
+	defer orchPluginsMutex.Unlock()
 
-	factory, found := providers[name]
+	oFactory, found := orchPluginRegistry[name]
 	if !found {
-		return nil, nil
+		return nil, fmt.Errorf("Orchestrator plugin '%s' not registered", name)
 	}
-	return factory(config)
+
+	return oFactory(name, region, config)
 }
 
-// TODO
-// Who calls this ?
-// This will currently be triggered while starting the binary as a http service ?
+// InitOrchProvider creates an instance of the named orchestrator plugin.
 //
-// InitOrchProvider creates an instance of the named orchestration provider.
-func InitOrchProvider(name string, configFilePath string) (OrchestratorInterface, error) {
+// NOTE:
+//    Who calls this ?
+// This is triggered while starting the Mayaserver as a http service.
+//
+// Http service invokes this to initialize the default orchestrator plugin with the
+// plugin's region.
+//
+// This can also be invoked at runtime depending on user initiated requests that
+// demand a specific region based orchestrator plugin.
+//
+// NOTE:
+//    However, the orchestrator plugin name should be registered before invoking this
+// function.
+func InitOrchProvider(name string, region string, configFilePath string) (OrchestratorInterface, error) {
 	var orchestrator OrchestratorInterface
 	var err error
 
 	if name == "" {
-		glog.Info("No orchestration provider specified.")
+		glog.Info("Orchestrator name not provided")
+		return nil, nil
+	}
+
+	if region == "" {
+		glog.Info("Orchestrator region not provided")
 		return nil, nil
 	}
 
@@ -102,16 +137,17 @@ func InitOrchProvider(name string, configFilePath string) (OrchestratorInterface
 	}
 
 	if config != nil {
-		orchestrator, err = GetOrchProvider(name, config)
+		orchestrator, err = GetOrchProvider(name, region, config)
 	} else {
-		orchestrator, err = GetOrchProvider(name, nil)
+		orchestrator, err = GetOrchProvider(name, region, nil)
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("could not init orchestration provider %q: %v", name, err)
+		return nil, err
 	}
+
 	if orchestrator == nil {
-		return nil, fmt.Errorf("unknown orchestration provider %q", name)
+		return nil, fmt.Errorf("Could not create '%s' orchestration provider", name)
 	}
 
 	return orchestrator, nil

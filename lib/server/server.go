@@ -1,11 +1,13 @@
 package server
 
 import (
-	"fmt"
+	//"fmt"
 	"io"
 	"log"
 	"sync"
 
+	v1jiva "github.com/openebs/mayaserver/lib/api/v1/jiva"
+	v1nomad "github.com/openebs/mayaserver/lib/api/v1/nomad"
 	"github.com/openebs/mayaserver/lib/config"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	"github.com/openebs/mayaserver/lib/orchprovider/nomad"
@@ -16,11 +18,9 @@ import (
 // MayaServer is a long running stateless daemon that runs
 // at openebs maya master(s)
 type MayaServer struct {
-	config       *config.MayaConfig
-	pluginsMutex sync.Mutex
-	volPlugins   map[string]volume.VolumeInterface
-	logger       *log.Logger
-	logOutput    io.Writer
+	config    *config.MayaConfig
+	logger    *log.Logger
+	logOutput io.Writer
 
 	shutdown     bool
 	shutdownCh   chan struct{}
@@ -32,7 +32,6 @@ type MayaServer struct {
 func NewMayaServer(config *config.MayaConfig, logOutput io.Writer) (*MayaServer, error) {
 	ms := &MayaServer{
 		config:     config,
-		volPlugins: make(map[string]volume.VolumeInterface),
 		logger:     log.New(logOutput, "", log.LstdFlags|log.Lmicroseconds),
 		logOutput:  logOutput,
 		shutdownCh: make(chan struct{}),
@@ -55,6 +54,18 @@ func NewMayaServer(config *config.MayaConfig, logOutput io.Writer) (*MayaServer,
 //
 // NOTE:
 //    The current implementation is tightly coupled & cannot be unit tested.
+//
+// NOTE:
+//    Mayaserver should be entrusted to registering all possible variants of
+// volume plugins.
+//
+// A volume plugin variant is composed of:
+//    volume plugin + orchestrator of volume plugin + region of orchestrator
+//
+// In addition, Mayaserver should initialize the `default volume plugin`
+// instance with its `default orchestrator` & `default region` of the
+// orchestrator. User initiated requests requiring specific variants should be
+// initialized at runtime.
 func (ms *MayaServer) BootstrapPlugins() error {
 
 	// TODO
@@ -67,52 +78,57 @@ func (ms *MayaServer) BootstrapPlugins() error {
 	//  3. Fetch the config file location of volume plugin
 	//  4. Initialize volume plugin
 
-	ms.pluginsMutex.Lock()
-	defer ms.pluginsMutex.Unlock()
-
+	// Typically the orchestrator should be initialized with its
+	// region property. However, if initialization logic is not provided with
+	// specific region then a default region specific to orchestrator is taken into
+	// account.
 	// TODO
-	// Get the Orchestrator conf file path from ms.config
-	// Get a default path if ms.config does not provide it
-	orchConfPath := "/etc/mayaserver/orchprovider/"
-
+	// Get this default value w.r.t orchestrator from mayaserver config file
+	// e.g.
+	//    NOMAD_REGION = global
+	//    K8S_REGION = us-east-1
 	// TODO
-	// Get the region from ms.config or http query params, or the default
-	// ms.config should not have a region for mayaserver, it should have a region
-	// for the orchestrator providers
-	// Fetch the region specific NomadConfig file
-	region := "global"
+	// There may be cases where user initiated requests might specify region.
+	// In those cases, a separate volumeplugin should be initialized with that
+	// specific region.
+	//
+	// NOTE:
+	//    In other words a particular volume plugin may have two
+	// running instances pointing to different regions.
 
-	nConfFile := orchConfPath + "nomad_" + region + ".INI"
-	orchestrator, err := orchprovider.InitOrchProvider(nomad.NomadOrchProviderName, nConfFile)
+	found := orchprovider.IsOrchProvider(v1nomad.DefaultNomadPluginName)
+	if !found {
+		orchprovider.RegisterOrchProvider(
+			// A variant of nomad orchestrator plugin
+			v1nomad.DefaultNomadPluginName,
+			// Below is a functional implementation that holds the initialization
+			// logic of nomad orchestrator plugin
+			func(name string, region string, config io.Reader) (orchprovider.OrchestratorInterface, error) {
+				return nomad.NewNomadOrchestrator(name, region, config)
+			})
+	}
+
+	orchestrator, err := orchprovider.InitOrchProvider(v1nomad.DefaultNomadPluginName, v1nomad.DefaultNomadRegionName, v1nomad.DefaultNomadConfigFile)
 	if err != nil {
 		return err
 	}
 
+	// Set the jiva aspects with its defaults
 	jivaAspect := &jiva.JivaStorNomadAspect{
 		Nomad: orchestrator,
+
+		// The default datacenter. Typically user initiated actions will specify
+		// a particular datacenter. This property is useful in cases where the actions
+		// or requests do not specify a datacenter value.
+		Datacenter: v1jiva.DefaultJivaDataCenter,
 	}
 
-	jivaStor, err := volume.InitVolumePlugin(jiva.JivaStorPluginName, "", jivaAspect)
+	_, err = volume.InitVolumePlugin(v1jiva.DefaultJivaVolumePluginName, "", jivaAspect)
 	if err != nil {
 		return err
 	}
 
-	ms.volPlugins[jiva.JivaStorPluginName] = jivaStor
 	return nil
-}
-
-// GetVolumePlugin is an accessor that fetches a volume.VolumeInterface instance
-// The volume.VolumeInterface should have been initialized earlier.
-func (ms *MayaServer) GetVolumePlugin(name string) (volume.VolumeInterface, error) {
-	ms.pluginsMutex.Lock()
-	defer ms.pluginsMutex.Unlock()
-
-	storage, found := ms.volPlugins[name]
-	if !found {
-		return nil, fmt.Errorf("Volume plugin '%s' not found", name)
-	}
-
-	return storage, nil
 }
 
 // Shutdown is used to terminate MayaServer.
