@@ -4,6 +4,7 @@
 package nethelper
 
 import (
+	"fmt"
 	"net"
 	"os/exec"
 	"strings"
@@ -183,6 +184,10 @@ func GetAvailableIPs(cidr string, reqdCount int) ([]string, error) {
 	}
 
 	avails := <-doneChan
+
+	if len(avails) < reqdCount {
+		return nil, fmt.Errorf("Failed to fetch IPs. Required: '%d', Got: '%d'", reqdCount, len(avails))
+	}
 
 	return avails, nil
 }

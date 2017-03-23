@@ -10,13 +10,19 @@ import (
 type JivaLbl string
 
 const (
-	JivaFrontEndImageLbl  JivaLbl = "fe.jiva.volume.openebs.io/image-version"
-	JivaFrontEndIPLbl     JivaLbl = "fe.jiva.volume.openebs.io/ip"
-	JivaBackEndIPLbl      JivaLbl = "be.jiva.volume.openebs.io/ip"
+	JivaFrontEndImageLbl JivaLbl = "fe.jiva.volume.openebs.io/image-version"
+	JivaBackEndImageLbl  JivaLbl = "be.jiva.volume.openebs.io/image-version"
+
+	JivaFrontEndIPLbl JivaLbl = "fe.jiva.volume.openebs.io/ip"
+	JivaBackEndIPLbl  JivaLbl = "be.jiva.volume.openebs.io/ip"
+
 	JivaFrontEndAllIPsLbl JivaLbl = "fe.jiva.volume.openebs.io/all-ips"
 	JivaBackEndAllIPsLbl  JivaLbl = "be.jiva.volume.openebs.io/all-ips"
-	JivaFrontEndCountLbl  JivaLbl = "fe.jiva.volume.openebs.io/count"
-	JivaBackEndCountLbl   JivaLbl = "be.jiva.volume.openebs.io/count"
+
+	JivaFrontEndCountLbl JivaLbl = "fe.jiva.volume.openebs.io/count"
+	JivaBackEndCountLbl  JivaLbl = "be.jiva.volume.openebs.io/count"
+
+	JivaBackEndVolStor JivaLbl = "be.jiva.volume.openebs.io/vol-stor"
 )
 
 const (

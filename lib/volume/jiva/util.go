@@ -381,15 +381,15 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 	// TODO
 	// Below is a tightly coupled design which makes sense of only
 	// one jiva controller & one jiva replica.
-	if pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] == "" && pvc.Labels[string(v1jiva.JivaBackEndIPLbl)] == "" {
-		// Get two available IPs
-		ips, err := nethelper.GetAvailableIPs(networkCIDR, 2)
+	if pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] == "" && pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] == "" {
+		// Get three available IPs
+		ips, err := nethelper.GetAvailableIPs(networkCIDR, 3)
 		if err != nil {
 			return err
 		}
 
 		pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] = ips[0]
-		pvc.Labels[string(v1jiva.JivaBackEndIPLbl)] = ips[1]
+		pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] = ips[1] + "," + ips[2]
 
 		return nil
 	}
@@ -406,14 +406,14 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 		return nil
 	}
 
-	if pvc.Labels[string(v1jiva.JivaBackEndIPLbl)] == "" {
-		// Get one available IP
-		ips, err := nethelper.GetAvailableIPs(networkCIDR, 1)
+	if pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] == "" {
+		// Get two available IPs
+		ips, err := nethelper.GetAvailableIPs(networkCIDR, 2)
 		if err != nil {
 			return err
 		}
 
-		pvc.Labels[string(v1jiva.JivaBackEndIPLbl)] = ips[0]
+		pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] = ips[0] + "," + ips[1]
 
 		return nil
 	}
