@@ -9,6 +9,12 @@ const (
 	CNInterfaceLbl       ContainerNetworkingLbl = "cn.openebs.io/interface"
 )
 
+type ContainerStorageLbl string
+
+const (
+	CSPersistenceLocationLbl ContainerStorageLbl = "cs.openebs.io/persistence-location"
+)
+
 type RequestsLbl string
 
 const (

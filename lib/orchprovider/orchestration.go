@@ -29,9 +29,16 @@ type OrchestratorInterface interface {
 // placements, scheduling, etc at the orchestrator end.
 type NetworkPlacements interface {
 
-	// NetworkInfoReq will try to fetch the networking details at the orchestrator
+	// NetworkPropsReq will try to fetch the networking details at the orchestrator
 	// based on a particular datacenter
-	NetworkInfoReq(dc string) (map[v1.ContainerNetworkingLbl]string, error)
+	//
+	// NetworkPropsReq does not fall under CRUD operations. This is applicable
+	// to fetching properties from a config, or database etc.
+	//
+	// NOTE:
+	//    This interface will have no control over Create, Update, Delete operations
+	// of network properties
+	NetworkPropsReq(dc string) (map[v1.ContainerNetworkingLbl]string, error)
 }
 
 // StoragePlacement provides the blueprint for storage related
@@ -49,4 +56,20 @@ type StoragePlacements interface {
 	// StorageInfoReq will try to fetch the details of a particular storage
 	// resource
 	StorageInfoReq(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
+
+	// StoragePropsReq will try to fetch the storage details at the orchestrator
+	// based on a particular datacenter
+	//
+	// StoragePropsReq does not fall under CRUD operations. This is applicable
+	// to fetching properties from a config, or database etc.
+	//
+	// NOTE:
+	//    This interface will have no control over Create, Update, Delete operations
+	// of storage properties.
+	//
+	// NOTE:
+	//    jiva requires these persistent storage properties to provision
+	// its instances e.g. backing persistence location is required on which
+	// a jiva replica can operate.
+	StoragePropsReq(dc string) (map[v1.ContainerStorageLbl]string, error)
 }

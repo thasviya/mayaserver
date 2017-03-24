@@ -22,23 +22,31 @@ const (
 // NomadConfig provides the settings that has the coordinates of a
 // Nomad server or a Nomad cluster deployment.
 //
-// In addition, it provides some of the networking options
-// that can be consumed by a container spawned via Nomad orchestrator.
+// In addition, it provides below:
 //
-// A NomadConfig file has .INI extension.
+// 1. networking options that can be consumed by the storage app container
+// spawned inside a Nomad cluster.
+//
+// 2. storage options that can be consumed by the storage app container
+// spawned inside a Nomad cluster.
+//
+// A NomadConfig file is a .INI extension file.
+// NOTE:
+//    This is as per gcfg lib's conventions
+//
 // Below is a sample:
 //
 // [datacenter "dc1"]
-// address = http://10.0.0.1:4646
-//
-// [datacenter "dc2"]
+// ; Address of Nomad deployment
 // address = http://20.0.0.2:4646
+//
+// ; Container Networking options
 // cn-type = host
 // cn-network-cidr = 172.28.128.1/24
 // cn-interface = enp0s8
 //
-// NOTE:
-//    This is as per gcfg lib's conventions
+// ; Container Storage options
+// cs-persistence-location = /tmp/
 type NomadConfig struct {
 	Datacenter map[string]*struct {
 		// Address of Nomad cluster
@@ -54,11 +62,18 @@ type NomadConfig struct {
 
 		// Networking interface that is available in the Nomad cluster
 		CNInterface string `gcfg:"cn-interface"`
+
+		// The backing persistent storage location on which
+		// containerized storage is supposed to operate
+		CSPersistenceLocation string `gcfg:"cs-persistence-location"`
 	}
 }
 
-// NomadUtilInterface is an abstraction over Hashicorp's
-// Nomad properties & communication utilities.
+// NomadUtilInterface is an abstraction over
+//
+// 1.   Hashicorp's Nomad properties & communication utilities.
+// 2.   Networking options available at/derived from Nomad cluster.
+// 3.   Storage options available at/derived from Nomad cluster.
 type NomadUtilInterface interface {
 
 	// Name of nomad utility
@@ -71,6 +86,10 @@ type NomadUtilInterface interface {
 	// This is a builder for NomadNetworks interface. Will return
 	// false if not supported.
 	NomadNetworks() (NomadNetworks, bool)
+
+	// This is a builder for NomadStorages interface. Will return
+	// false if not supported.
+	NomadStorages() (NomadStorages, bool)
 }
 
 // NomadClients is an abstraction over various connection modes (http, rpc)
@@ -94,6 +113,14 @@ type NomadNetworks interface {
 	// CN exposes various networking values that is supported at a
 	// particular datacenter where Nomad is running
 	CN(dc string) (map[v1.ContainerNetworkingLbl]string, error)
+}
+
+// NomadStorages is a blueprint to expose various persistence storage
+// options available in a Nomad cluster.
+type NomadStorages interface {
+	// CS exposes various persistence storage options that is supported at a
+	// particular datacenter where Nomad is running
+	CS(dc string) (map[v1.ContainerStorageLbl]string, error)
 }
 
 // nomadUtil is the concrete implementation for
@@ -152,75 +179,10 @@ func (m *nomadUtil) NomadNetworks() (NomadNetworks, bool) {
 	return m, true
 }
 
-// CN provides the container networking data in key-value pairs.
-// These networking data are supposed to be available in the target Nomad
-// cluster. These pairs are provided based on datacenter.
-func (m *nomadUtil) CN(dcName string) (map[v1.ContainerNetworkingLbl]string, error) {
-
-	err := m.validateConf(dcName)
-	if err != nil {
-		return nil, err
-	}
-
-	// build the cn map
-	cn := map[v1.ContainerNetworkingLbl]string{
-		v1.CNTypeLbl:            m.getCNType(dcName),
-		v1.CNNetworkCIDRAddrLbl: m.getCNNetworkCIDR(dcName),
-		v1.CNInterfaceLbl:       m.getCNInterface(dcName),
-	}
-
-	return cn, nil
-}
-
-func (m *nomadUtil) validateConf(dcName string) error {
-
-	if dcName == "" {
-		return fmt.Errorf("DC name is empty")
-	}
-
-	if m.nomadConf == nil {
-		return fmt.Errorf("Nil nomad config provided")
-	}
-
-	if m.nomadConf.Datacenter == nil {
-		return fmt.Errorf("DC not available in nomad config")
-	}
-
-	if m.nomadConf.Datacenter[dcName] == nil {
-		return fmt.Errorf("No details available for dc '%s'", dcName)
-	}
-
-	return nil
-}
-
-// getCNInterface extracts the network type from conf or returns the default value
-func (m *nomadUtil) getCNType(dcName string) string {
-
-	if m.nomadConf.Datacenter[dcName].CNType == "" {
-		return v1nomad.DefaultNomadCNType
-	}
-
-	return m.nomadConf.Datacenter[dcName].CNType
-}
-
-// getCNInterface extracts the network CIDR from conf or returns the default value
-func (m *nomadUtil) getCNNetworkCIDR(dcName string) string {
-
-	if m.nomadConf.Datacenter[dcName].CNNetworkCIDR == "" {
-		return v1nomad.DefaultNomadCNNetworkCIDR
-	}
-
-	return m.nomadConf.Datacenter[dcName].CNNetworkCIDR
-}
-
-// getCNInterface extracts the interface from conf or returns the default value
-func (m *nomadUtil) getCNInterface(dcName string) string {
-
-	if m.nomadConf.Datacenter[dcName].CNInterface == "" {
-		return v1nomad.DefaultNomadCNInterface
-	}
-
-	return m.nomadConf.Datacenter[dcName].CNInterface
+// nomadUtil implements NomadStorages interface. Hence it returns
+// self
+func (m *nomadUtil) NomadStorages() (NomadStorages, bool) {
+	return m, true
 }
 
 // Client is used to initialize and return a new API client capable
@@ -281,6 +243,108 @@ func (m *nomadUtil) Http() (*api.Client, error) {
 	// This has the http address & authentication details
 	// required to invoke Nomad APIs
 	return api.NewClient(apiCConf)
+}
+
+// CN provides the container networking data in key-value pairs.
+// These networking data are supposed to be available in the target Nomad
+// cluster. These pairs are provided based on datacenter.
+func (m *nomadUtil) CN(dcName string) (map[v1.ContainerNetworkingLbl]string, error) {
+
+	err := m.validateConf(dcName)
+	if err != nil {
+		return nil, err
+	}
+
+	// build the cn map
+	cn := map[v1.ContainerNetworkingLbl]string{
+		// container networking properties
+		v1.CNTypeLbl:            m.getCNType(dcName),
+		v1.CNNetworkCIDRAddrLbl: m.getCNNetworkCIDR(dcName),
+		v1.CNInterfaceLbl:       m.getCNInterface(dcName),
+	}
+
+	return cn, nil
+}
+
+// CS provides the container storage options in key-value pairs.
+// These persistent storage data are supposed to be available in the target Nomad
+// cluster. These pairs are provided based on datacenter.
+func (m *nomadUtil) CS(dcName string) (map[v1.ContainerStorageLbl]string, error) {
+
+	err := m.validateConf(dcName)
+	if err != nil {
+		return nil, err
+	}
+
+	// build the cs map
+	cs := map[v1.ContainerStorageLbl]string{
+		// container persistent storage properties
+		v1.CSPersistenceLocationLbl: m.getCSPersistenceLocation(dcName),
+	}
+
+	return cs, nil
+}
+
+func (m *nomadUtil) validateConf(dcName string) error {
+
+	if dcName == "" {
+		return fmt.Errorf("DC name is empty")
+	}
+
+	if m.nomadConf == nil {
+		return fmt.Errorf("Nil nomad config provided")
+	}
+
+	if m.nomadConf.Datacenter == nil {
+		return fmt.Errorf("DC not available in nomad config")
+	}
+
+	if m.nomadConf.Datacenter[dcName] == nil {
+		return fmt.Errorf("No details available for dc '%s'", dcName)
+	}
+
+	return nil
+}
+
+// getCNType extracts the network type from conf or returns the default value
+func (m *nomadUtil) getCNType(dcName string) string {
+
+	if m.nomadConf.Datacenter[dcName] != nil && m.nomadConf.Datacenter[dcName].CNType == "" {
+		return v1nomad.DefaultNomadCNType
+	}
+
+	return m.nomadConf.Datacenter[dcName].CNType
+}
+
+// getCNNetworkCIDR extracts the network CIDR from conf or returns the default value
+func (m *nomadUtil) getCNNetworkCIDR(dcName string) string {
+
+	if m.nomadConf.Datacenter[dcName] != nil && m.nomadConf.Datacenter[dcName].CNNetworkCIDR == "" {
+		return v1nomad.DefaultNomadCNNetworkCIDR
+	}
+
+	return m.nomadConf.Datacenter[dcName].CNNetworkCIDR
+}
+
+// getCNInterface extracts the interface from conf or returns the default value
+func (m *nomadUtil) getCNInterface(dcName string) string {
+
+	if m.nomadConf.Datacenter[dcName] != nil && m.nomadConf.Datacenter[dcName].CNInterface == "" {
+		return v1nomad.DefaultNomadCNInterface
+	}
+
+	return m.nomadConf.Datacenter[dcName].CNInterface
+}
+
+// getCSPersistenceLocation extracts the backing persistence storage
+// location from conf or returns the default value
+func (m *nomadUtil) getCSPersistenceLocation(dcName string) string {
+
+	if m.nomadConf.Datacenter[dcName] != nil && m.nomadConf.Datacenter[dcName].CSPersistenceLocation == "" {
+		return v1nomad.DefaultNomadCSPersistenceLocation
+	}
+
+	return m.nomadConf.Datacenter[dcName].CSPersistenceLocation
 }
 
 // readNomadConfig reads an instance of NomadConfig from config reader.

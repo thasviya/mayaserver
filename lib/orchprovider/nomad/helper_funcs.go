@@ -21,16 +21,25 @@ func PvcToJobName(pvc *v1.PersistentVolumeClaim) (string, error) {
 	}
 
 	if pvc.Name == "" {
-		return "", fmt.Errorf("Missing name in persistent volume claim")
+		return "", fmt.Errorf("Missing name in pvc")
 	}
 
 	return pvc.Name, nil
 }
 
 // Transform a PersistentVolumeClaim type to Nomad job type
+//
 // TODO
 // There is redundancy in validation. These should be gone once the transformation
 // is handled from jiva namespace.
+//
+// TODO
+// It may be better to avoid using pvc as a direct argument
+// It should be key:value pairs
+// The keys can be of type SpecsLbl
+// These keys can in turn be used in PVC as well
+// However, the argument to this function should be a struct that consists of
+// a map of SpecsLbl:Value
 func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 
 	if pvc == nil {
@@ -46,37 +55,50 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	}
 
 	if pvc.Labels[string(v1.RegionLbl)] == "" {
-		return nil, fmt.Errorf("Missing region in persistent volume claim")
+		return nil, fmt.Errorf("Missing region in pvc")
 	}
 
 	if pvc.Labels[string(v1.DatacenterLbl)] == "" {
-		return nil, fmt.Errorf("Missing datacenter in persistent volume claim")
+		return nil, fmt.Errorf("Missing datacenter in pvc")
 	}
 
 	if pvc.Labels[string(v1jiva.JivaFrontEndImageLbl)] == "" {
-		return nil, fmt.Errorf("Missing jiva fe image version in persistent volume claim")
-	}
-
-	if pvc.Labels[string(v1.CNTypeLbl)] == "" {
-		return nil, fmt.Errorf("Missing cn type in persistent volume claim")
+		return nil, fmt.Errorf("Missing jiva fe image version in pvc")
 	}
 
 	if pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] == "" {
-		return nil, fmt.Errorf("Missing jiva fe ip in persistent volume claim")
+		return nil, fmt.Errorf("Missing jiva fe ip in pvc")
 	}
 
 	if pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] == "" {
-		return nil, fmt.Errorf("Missing jiva be ips in persistent volume claim")
+		return nil, fmt.Errorf("Missing jiva be ips in pvc")
+	}
+
+	// TODO These should be derived from:
+	//
+	// pvc.Spec.NetworkResources
+	// pvc.Spec.StorageResources
+	// These types are currently strict but less flexible
+
+	if pvc.Labels[string(v1.CNTypeLbl)] == "" {
+		return nil, fmt.Errorf("Missing cn type in pvc")
 	}
 
 	if pvc.Labels[string(v1.CNSubnetLbl)] == "" {
-		return nil, fmt.Errorf("Missing cn subnet in persistent volume claim")
+		return nil, fmt.Errorf("Missing cn subnet in pvc")
 	}
 
 	if pvc.Labels[string(v1.CNInterfaceLbl)] == "" {
-		return nil, fmt.Errorf("Missing cn interface in persistent volume claim")
+		return nil, fmt.Errorf("Missing cn interface in pvc")
 	}
 
+	if pvc.Labels[string(v1.CSPersistenceLocationLbl)] == "" {
+		return nil, fmt.Errorf("Missing cs persistence location in pvc")
+	}
+
+	// TODO
+	// With the proposed design the pvc validations should not occur here
+	// They should be retricted to appropriate volume plugins.
 	if &pvc.Spec == nil || &pvc.Spec.Resources == nil || pvc.Spec.Resources.Requests == nil {
 		return nil, fmt.Errorf("Storage specs missing in pvc")
 	}
@@ -105,7 +127,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	region := helper.StringToPtr(pvc.Labels[string(v1.RegionLbl)])
 	dc := pvc.Labels[string(v1.DatacenterLbl)]
 
-	jivaGroupName := "pod"
+	jivaGroupName := "jiva-pod"
 	jivaVolName := pvc.Name
 
 	// Set storage size
@@ -128,6 +150,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	jivaBeIPArr := strings.Split(jivaBeIPs, ",")
 	jivaBeIP1 := jivaBeIPArr[0]
 	jivaBeIP2 := jivaBeIPArr[1]
+	jivaBEPersistentStor := pvc.Labels[string(v1.CSPersistenceLocationLbl)]
 
 	jivaFeSubnet := pvc.Labels[string(v1.CNSubnetLbl)]
 	jivaFeInterface := pvc.Labels[string(v1.CNInterfaceLbl)]
@@ -238,7 +261,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 							"JIVA_CTL_IP":       jivaFeIP,
 							"JIVA_REP_VOLNAME":  jivaVolName,
 							"JIVA_REP_VOLSIZE":  jivaBEVolSize,
-							"JIVA_REP_VOLSTORE": "/tmp/jiva/" + pvc.Name + "-" + beTaskGroup1 + "/" + beTaskName1,
+							"JIVA_REP_VOLSTORE": jivaBEPersistentStor + pvc.Name + "-" + beTaskGroup1 + "/" + beTaskName1,
 							"JIVA_REP_VERSION":  jivaFeVersion,
 							"JIVA_REP_NETWORK":  jivaNetworkType,
 							"JIVA_REP_IFACE":    jivaFeInterface,
@@ -289,7 +312,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 							"JIVA_CTL_IP":       jivaFeIP,
 							"JIVA_REP_VOLNAME":  jivaVolName,
 							"JIVA_REP_VOLSIZE":  jivaBEVolSize,
-							"JIVA_REP_VOLSTORE": "/tmp/jiva/" + pvc.Name + "-" + beTaskGroup2 + "/" + beTaskName2,
+							"JIVA_REP_VOLSTORE": jivaBEPersistentStor + pvc.Name + "-" + beTaskGroup2 + "/" + beTaskName2,
 							"JIVA_REP_VERSION":  jivaFeVersion,
 							"JIVA_REP_NETWORK":  jivaNetworkType,
 							"JIVA_REP_IFACE":    jivaFeInterface,

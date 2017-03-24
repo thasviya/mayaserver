@@ -32,15 +32,37 @@ type JivaInterface interface {
 }
 
 type NetworkOps interface {
-	NetworkInfo(dc string) (map[v1.ContainerNetworkingLbl]string, error)
+
+	// NetworkProps does not fall under CRUD operations. This is applicable
+	// to fetching properties from a config, or database etc.
+	//
+	// NOTE:
+	//    This interface will have no control over Create, Update, Delete operations
+	// of network properties
+	NetworkProps(dc string) (map[v1.ContainerNetworkingLbl]string, error)
 }
 
 type StorageOps interface {
+
+	// CRUD operations
 	StorageInfo(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 
 	ProvisionStorage(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 
 	DeleteStorage(*v1.PersistentVolume) (*v1.PersistentVolume, error)
+
+	// StorageProps does not fall under CRUD operations. This is applicable
+	// to fetching properties from a config, or database etc.
+	//
+	// NOTE:
+	//    This interface will have no control over Create, Update, Delete operations
+	// of storage properties.
+	//
+	// NOTE:
+	//    jiva requires these persistent storage properties to provision
+	// its instances e.g. backing persistence location is required on which
+	// a jiva replica can operate.
+	StorageProps(dc string) (map[v1.ContainerStorageLbl]string, error)
 }
 
 // jivaUtil is the concrete implementation for
@@ -87,11 +109,11 @@ func (j *jivaUtil) NetworkOps() (NetworkOps, bool) {
 	return j, true
 }
 
-// NetworkInfo tries to fetch networking details from its orchestrator
+// NetworkProps tries to fetch networking details from its orchestrator
 //
 // NOTE:
 //  This is a concrete implementation of NetworkOps interface
-func (j *jivaUtil) NetworkInfo(dc string) (map[v1.ContainerNetworkingLbl]string, error) {
+func (j *jivaUtil) NetworkProps(dc string) (map[v1.ContainerNetworkingLbl]string, error) {
 
 	orchestrator, err := j.aspect.GetOrchProvider()
 	if err != nil {
@@ -104,7 +126,27 @@ func (j *jivaUtil) NetworkInfo(dc string) (map[v1.ContainerNetworkingLbl]string,
 		return nil, fmt.Errorf("Network operations not supported by orchestrator '%s'", orchestrator.Name())
 	}
 
-	return networkOrchestrator.NetworkInfoReq(dc)
+	return networkOrchestrator.NetworkPropsReq(dc)
+}
+
+// StorageProps tries to fetch persistent storage details from its orchestrator
+//
+// NOTE:
+//  This is a concrete implementation of StorageOps interface
+func (j *jivaUtil) StorageProps(dc string) (map[v1.ContainerStorageLbl]string, error) {
+
+	orchestrator, err := j.aspect.GetOrchProvider()
+	if err != nil {
+		return nil, err
+	}
+
+	storageOrchestrator, ok := orchestrator.StoragePlacements()
+
+	if !ok {
+		return nil, fmt.Errorf("Storage operations not supported by orchestrator '%s'", orchestrator.Name())
+	}
+
+	return storageOrchestrator.StoragePropsReq(dc)
 }
 
 // Info tries to fetch details of a jiva volume placed in an orchestrator
@@ -169,6 +211,11 @@ func (j *jivaUtil) ProvisionStorage(pvc *v1.PersistentVolumeClaim) (*v1.Persiste
 	}
 
 	err = j.setCN(dc, pvc)
+	if err != nil {
+		return nil, err
+	}
+
+	err = j.setCS(dc, pvc)
 	if err != nil {
 		return nil, err
 	}
@@ -337,6 +384,38 @@ func (j *jivaUtil) setDC(pvc *v1.PersistentVolumeClaim) (string, error) {
 	return dc, nil
 }
 
+// setCS sets the container storage properties in a PersistentVolumeClaim
+// if not done so already.
+func (j *jivaUtil) setCS(dc string, pvc *v1.PersistentVolumeClaim) error {
+
+	if pvc.Labels == nil {
+		return fmt.Errorf("Persistent volume claim's labels not initialized")
+	}
+
+	if dc == "" {
+		return fmt.Errorf("Datacenter not provided")
+	}
+
+	// Fetch the networking options that are orchestrator & datacenter specific
+	cs, err := j.StorageProps(dc)
+	if err != nil {
+		return err
+	}
+
+	// Set the persistent storage options if not already set
+	//
+	// NOTE:
+	//    User provided persistent storage options score over
+	// orchestrator & dc specific configurations
+	for k, _ := range cs {
+		if pvc.Labels[string(k)] == "" {
+			pvc.Labels[string(k)] = cs[k]
+		}
+	}
+
+	return nil
+}
+
 // setCN sets the container networking properties in a PersistentVolumeClaim
 // if not done so already.
 func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
@@ -350,7 +429,7 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 	}
 
 	// Fetch the networking options that are orchestrator & datacenter specific
-	cn, err := j.NetworkInfo(dc)
+	cn, err := j.NetworkProps(dc)
 	if err != nil {
 		return err
 	}

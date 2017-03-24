@@ -81,10 +81,16 @@ to get into the usage of OpenEBS without much of learning curve.
 
   ```ini
   [datacenter "dc1"]
+  ; Address of Nomad deployment
   address = http://172.28.128.3:4646
+  
+  ; Container Networking options
   cn-type = host
   cn-network-cidr = 172.28.128.1/24
   cn-interface = enp0s8
+  
+  ; Container Storage options
+  cs-persistence-location = /tmp/
   ```
 
 - Below is a sample volume spec that can be provisioned

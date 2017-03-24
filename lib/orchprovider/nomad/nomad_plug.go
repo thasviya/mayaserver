@@ -143,12 +143,20 @@ func (n *NomadOrchestrator) NetworkPlacements() (orchprovider.NetworkPlacements,
 	return n, true
 }
 
-// NetworkInfoReq is a contract method implementation of
+// NetworkPropsReq is a contract method implementation of
 // orchprovider.NetworkPlacements interface. In this implementation,
 // network resource details will be fetched from a Nomad deployment.
-func (n *NomadOrchestrator) NetworkInfoReq(dc string) (map[v1.ContainerNetworkingLbl]string, error) {
+func (n *NomadOrchestrator) NetworkPropsReq(dc string) (map[v1.ContainerNetworkingLbl]string, error) {
 
-	return n.nNetApis.NetworkInfo(dc)
+	return n.nNetApis.NetworkProps(dc)
+}
+
+// StoragePropsReq is a contract method implementation of
+// orchprovider.StoragePlacements interface. In this implementation,
+// persistent storage details will be fetched from a Nomad deployment.
+func (n *NomadOrchestrator) StoragePropsReq(dc string) (map[v1.ContainerStorageLbl]string, error) {
+
+	return n.nStorApis.StorageProps(dc)
 }
 
 // StorageInfoReq is a contract method implementation of

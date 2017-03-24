@@ -81,6 +81,32 @@ type StorageApis interface {
 
 	// Info provides the storage information w.r.t the provided job name
 	StorageInfo(jobName string) (*api.Job, error)
+
+	// StorageProps fetches appropriate persistent storage props that
+	// is assumed to be supported at deployed Nomad environment.
+	StorageProps(dc string) (map[v1.ContainerStorageLbl]string, error)
+}
+
+// Fetch persistent storage properties that is supported at the deployed Nomad
+// environment.
+func (n *nomadApi) StorageProps(dc string) (map[v1.ContainerStorageLbl]string, error) {
+
+	nUtil := n.nUtil
+	if nUtil == nil {
+		return nil, fmt.Errorf("Nomad utility not initialized")
+	}
+
+	nStorages, ok := nUtil.NomadStorages()
+	if !ok {
+		return nil, fmt.Errorf("Nomad storages not supported by nomad utility '%s'", nUtil.Name())
+	}
+
+	ns, err := nStorages.CS(dc)
+	if err != nil {
+		return nil, err
+	}
+
+	return ns, nil
 }
 
 // Fetch info about a particular resource in Nomad cluster.
@@ -202,12 +228,12 @@ type NetworkApis interface {
 
 	// NetworkInfo fetches appropriate container networking values that
 	// is assumed to be supported at deployed Nomad environment.
-	NetworkInfo(dc string) (map[v1.ContainerNetworkingLbl]string, error)
+	NetworkProps(dc string) (map[v1.ContainerNetworkingLbl]string, error)
 }
 
 // Fetch networking information that is supported at the deployed Nomad
 // environment.
-func (n *nomadApi) NetworkInfo(dc string) (map[v1.ContainerNetworkingLbl]string, error) {
+func (n *nomadApi) NetworkProps(dc string) (map[v1.ContainerNetworkingLbl]string, error) {
 
 	nUtil := n.nUtil
 	if nUtil == nil {
